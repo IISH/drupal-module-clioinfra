@@ -1,0 +1,109 @@
+<?php
+
+/*
+ * Base module for Clio Infra.
+ * 
+ * Vocabularies, vocabulary term values and content-types:
+ * Feature clio_indicators_and_countries contains terms for these vocabularies,
+ */
+
+// Clio Infra will show data from 1500 to this year.
+// TODO Make MIN and MAX admin configurable.
+define('CLIO_MIN_YEAR', 1500);
+define('CLIO_MAX_YEAR', 2013);
+// CSV delimiter.
+define('CLIO_DELIMITER', ',');
+
+
+
+/**
+ * Implements hook_menu().
+ *
+ * Creates a 'Clio Infra' section on the administration page for Clio
+ * modules to use for their configuration and settings.
+ */
+function clio_menu() {
+  $items['home'] = array(
+    'title' => 'Clio Infra',
+    'page callback' => 'clio_home',
+    'access arguments' => array('access content'),
+  );
+  $items['admin/config/clio'] = array(
+    'title' => 'Clio Infra',
+    'description' => 'Settings for Clio Infra modules.',
+    'position' => 'left',
+    'weight' => -10,
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer clioinfra'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+  return $items;
+}
+
+
+/*
+ * A completely empty home page, suitable to add blocks.
+ */
+function clio_home() {
+  return '';
+}
+
+/**
+ * Implements hook_permission().
+ */
+function clio_permission() {
+  return array(
+    'administer clioinfra' => array(
+      'title' => t('Administer Clio Infra'),
+    ),
+  );
+}
+
+
+/*
+ * Get a list of all countries known in the system.
+ *
+ * @return $countries
+ *   An array keyed by country ID (the numerical id).
+ * TODO cache
+ */
+function clio_get_countries() {
+  $countries_vocab = taxonomy_vocabulary_machine_name_load('countries');
+  $countries_tree = taxonomy_get_tree($countries_vocab->vid, 0, NULL, TRUE);
+  $countries = array();
+  foreach ($countries_tree as $country) {
+    if (!empty($country->field_country_id)) {
+      $id = $country->field_country_id['und'][0]['value'];
+      $code = !empty($country->field_country_code) ? $country->field_country_code['und'][0]['value'] : '';
+      $shortname = !empty($country->field_shortname) ? $country->field_shortname['und'][0]['value'] : '';
+      $countries[$id] = array('name' => $country->name, 'tid' => $country->tid, 'code' => $code, 'shortname' => $shortname);
+    }
+  }
+  return $countries;
+}
+
+
+function clio_validate_api($element, &$form_state) {
+  $parts = parse_url($element['#value']);
+  foreach (array('scheme', 'host', 'path') as $key) {
+    if (empty($parts[$key])) {
+      form_set_error($element['#name'], t('The "!name" needs to include a !part', array('!name' => t($element['#title']), '!part' => $key)));
+    }
+  }
+  if (isset($parts['port'])) {
+    // parse_url() should always give an integer for port. Since drupal_http_request()
+    // also uses parse_url(), we don't need to validate anything except the range.
+    $pattern = empty($parts['user']) ? '@://[^:]+:([^/]+)@' : '#://[^@]+@[^:]+:([^/]+)#';
+    preg_match($pattern, $form_state['values'][$element['#name']], $m);
+    if (empty($m[1]) || !ctype_digit($m[1]) || $m[1] < 1 || $m[1] > 65535) {
+      form_set_error($element['#name'], t('The port has to be an integer between 1 and 65535.'));
+    }
+  }
+  // Normalize the url by removing extra slashes and whitespace.
+  $form_state['values'][$element['#name']] = trim($form_state['values'][$element['#name']], "/ \t\r\n\0\x0B");
+}
+
+
+function clio_validate_datasetid($datasetid) {
+}
