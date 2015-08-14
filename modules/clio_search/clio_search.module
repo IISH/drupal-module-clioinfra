@@ -155,7 +155,6 @@ function clio_search_config_form($form, &$form_state) {
 }
 
 
-// TODO selecting no indicators will select them all. Do we want that?
 /*
  * Show a filter form with years, countries and indicators.
  */
@@ -187,7 +186,25 @@ afterDeselect: function(){
 }
 EOB;
 
+  $block_submit = <<<EOB
+jQuery('#clio-search-select-form').on('keyup keypress', function(e) {
+  var code = e.keyCode || e.which;
+  if (code == 13) { 
+    e.preventDefault();
+    return false;
+  }
+});
+EOB;
+
   $form['#action'] = url('datasets/searchresults');
+  // Only submit form by clicking submit, to prevent accidental queries.
+  $form['#attached']['js'] = array(
+    array(
+     'data' => $block_submit,
+     'type' => 'inline',
+     'scope' => 'footer',
+    ),
+  );
 
   if ($type == 'modern') {
    $help = t('Datasets converted to modern boundaries.');
@@ -233,7 +250,7 @@ EOB;
     '#attached' => array(
       'js' => array(
         array(
-         'data' => "jQuery('#edit-indicator').multiSelect({{$searchbox}})" ,
+         'data' => "jQuery('#edit-indicator').multiSelect({{$searchbox}})",
          'type' => 'inline',
          'scope' => 'footer',
         ),
@@ -251,7 +268,7 @@ EOB;
       '#attached' => array(
         'js' => array(
           array(
-           'data' => "jQuery('#edit-country').multiSelect({{$searchbox}})" ,
+           'data' => "jQuery('#edit-country').multiSelect({{$searchbox}})",
            'type' => 'inline',
            'scope' => 'footer',
           ),
@@ -311,7 +328,9 @@ function clio_search_results() {
   else {
     $query = array();
     foreach ($params as $key => $value) {
-      $query[$key] = $value;
+      if (!empty($value)) {
+        $query[$key] = $value;
+      }
     }
     $querylink = l("query", $path, array('query' => $query));
     // TODO request search api and receive results
@@ -462,7 +481,7 @@ function clio_search_download() {
     }
   }
   else if (($params['op'] == 'Visualize') && (module_exists('clio_visualize'))) {
-    drupal_goto('datasets/visualize/' . rawurlencode($datasetid));
+    drupal_goto('visualize/' . rawurlencode($datasetid));
   }
   else {
     drupal_set_message('An error occurred while creating the download file.', 'error');
@@ -480,9 +499,7 @@ function clio_search_download_form_submit() {
 /*
  * Get type, years, countries and indicators from the querystring.
  * Make sure type is correct and all other values are numeric.
- * If no indicators are specified all available indicators will be returned.
  *
- * TODO Sort indicators in case of multiple parents?
  * TODO validate op and datasetid.
  *
  * @return
@@ -508,17 +525,7 @@ function clio_search_get_params($include = FALSE) {
       }
     }
     else {
-    // All indicators.
       $indicators = array();
-      $vocab = taxonomy_vocabulary_machine_name_load('indicators');
-      $topics = taxonomy_get_tree($vocab->vid, 0, 1);
-      foreach ($topics as $topic) {
-        $children = taxonomy_get_children($topic->tid);
-        foreach ($children as $child) {
-          $indicators[] = $child->tid;
-        }
-      }
-      $indicators = array_unique($indicators);
     }
   }
   if ($include) {
