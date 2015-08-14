@@ -9,41 +9,34 @@ function clio_visualize_menu() {
   $items = array();
   $items['visualize'] = array(
     'title' => 'Visualize',
-    'page callback' => 'drupal_goto',
-    'page arguments'   => array('datasets/visualize'),
-    'access arguments' => array('visualize datasets'),
-    'expanded' => TRUE,
-  );
-  $items['datasets/visualize'] = array(
-    'title' => 'Visualize',
     'page callback' => 'clio_visualize_intro',
     'access arguments' => array('visualize datasets'),
     'expanded' => TRUE,
   );
-  $items['datasets/visualize/%'] = array(
+  $items['visualize/%'] = array(
     'title'            => 'Maps',
     'page callback'    => 'clio_visualize_maps',
-    'page arguments'   => array(2),
+    'page arguments'   => array(1),
     'access arguments' => array('visualize datasets'),
     'type'             => MENU_CALLBACK,
   );
-  $items['datasets/visualize/%/maps'] = array(
+  $items['visualize/%/maps'] = array(
     'title'            => 'Maps',
     'type'             => MENU_DEFAULT_LOCAL_TASK,
     'weight'           => 1,
   );
-  $items['datasets/visualize/%/graphs'] = array(
+  $items['visualize/%/graphs'] = array(
     'title'            => 'Graphs',
     'page callback'    => 'clio_visualize_graphs',
-    'page arguments'   => array(2),
+    'page arguments'   => array(1),
     'access arguments' => array('visualize datasets'),
     'type'             => MENU_LOCAL_TASK,
     'weight'           => 2,
   );  
-  $items['datasets/visualize/%/stats'] = array(
+  $items['visualize/%/stats'] = array(
     'title'            => 'Stats',
     'page callback'    => 'clio_visualize_stats',
-    'page arguments'   => array(2),
+    'page arguments'   => array(1),
     'access arguments' => array('visualize datasets'),
     'type'             => MENU_LOCAL_TASK,
     'weight'           => 2,
@@ -180,22 +173,20 @@ function clio_visualize_config_form($form, &$form_state) {
 function clio_visualize_maps($datasetid) {
   // TODO Validate for realz.
   $datasetid = isset($datasetid) ? rawurldecode($datasetid) : '';
-  //  TODO: initial year dynamically computed in js?
-  $year = 1980;
-  if ($datasetid) {
-    $settings = array(
-      'mapapi' => variable_get('clio_visualize_map_api', ''),
-      'datapi' => variable_get('clio_visualize_data_api', ''),
-      'year'   => $year,
-      'handle' => $datasetid,
-      'div'    => 'map',
-    );
-  }
-  $content = '<div class="map"></div>';
+  // TODO: initial year dynamically computed in js?
 
-  // Temporary value.
+  // Temporary values.
   // Where does 26:27 come from?
-  $settings['handle'] = 'hdl:10622/EKPBIZ:26:27';
+  $datasetid = 'hdl:10622/EKPBIZ:26:27';
+  $year = 1980;
+  $settings = array(
+    'mapapi' => variable_get('clio_visualize_map_api', ''),
+    'datapi' => variable_get('clio_visualize_data_api', ''),
+    'year'   => $year,
+    'handle' => $datasetid,
+    'div'    => 'map',
+  );
+  $content = '<div class="map"></div>';
 
   if (!($datasetid)) {
     drupal_set_message(t('Incorrect dataset id.'), 'error');
