@@ -241,10 +241,13 @@ EOB;
     '#default_value' => CLIO_MAX_YEAR,
   );
 
+  if (!($options = clio_search_taxonomy_options('indicators'))) {
+    drupal_set_message(t('No indicators available.'), 'error');
+  }
   $form['indicator'] = array(
     '#type' => 'select',
     '#title' => t('Indicators'),
-    '#options' => clio_search_taxonomy_options('indicators'),
+    '#options' => $options,
     '#multiple' => TRUE,
     '#size' => 14,
     '#attached' => array(
@@ -259,16 +262,28 @@ EOB;
   );
   
   if ($type == 'modern') {
+    if ($options = clio_search_taxonomy_options('countries')) {
+      $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
+    }
+    else {
+      drupal_set_message(t('No countries available.'), 'error');
+      $selectall = '';
+    }
     $form['country'] = array(
       '#type' => 'select',
       '#title' => t('Countries'),
-      '#options' => clio_search_taxonomy_options('countries'),
+      '#options' => $options,
       '#multiple' => TRUE,
       '#size' => 14,
       '#attached' => array(
         'js' => array(
           array(
-           'data' => "jQuery('#edit-country').multiSelect({{$searchbox}})",
+           'data' => "jQuery('#edit-country').multiSelect({{$searchbox}{$selectall}})",
+           'type' => 'inline',
+           'scope' => 'footer',
+          ),
+          array(
+           'data' => "jQuery('#select-all-countries').click(function(){jQuery('#edit-country').multiSelect('select_all'); return false;})",
            'type' => 'inline',
            'scope' => 'footer',
           ),
@@ -564,6 +579,7 @@ function clio_search_taxonomy_get_leaves($machine_name, $parent = 0) {
 
 
 function clio_search_taxonomy_options($machine_name) {
+  $options = array();
   $vocabulary = taxonomy_vocabulary_machine_name_load($machine_name);
   $tree = taxonomy_get_tree($vocabulary->vid);
   foreach ($tree as $item) {
