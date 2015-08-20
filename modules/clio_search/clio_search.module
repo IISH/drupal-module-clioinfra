@@ -439,11 +439,11 @@ function clio_search_download_form($form, &$form_state, $params, $id) {
     '#prefix' => '<span class="search-submit-download">',
     '#suffix' => '</span>',
   );
-  if (module_exists('clio_visualize')) {
-    $form['visualize'] = array(
+  if (module_exists('clio_analyze') && variable_get('clio_analyze_default', '')) {
+    $form['analyze'] = array(
       '#type' => 'submit',
-      '#value' => t('Visualize'),
-      '#prefix' => '<span class="search-submit-visualize">',
+      '#value' => t('Analyze'),
+      '#prefix' => '<span class="search-submit-analyze">',
       '#suffix' => '</span>',
     );
   }
@@ -495,8 +495,8 @@ function clio_search_download() {
       drupal_goto($download_url, array('query' => array('persistentId' => $datasetid)));
     }
   }
-  else if (($params['op'] == 'Visualize') && (module_exists('clio_visualize'))) {
-    drupal_goto('visualize/' . rawurlencode($datasetid));
+  else if (($params['op'] == 'Analyze') && (module_exists('clio_analyze'))) {
+    drupal_goto('analyze/' . rawurlencode($datasetid));
   }
   else {
     drupal_set_message('An error occurred while creating the download file.', 'error');
@@ -544,7 +544,7 @@ function clio_search_get_params($include = FALSE) {
     }
   }
   if ($include) {
-    $op = isset($query['op']) && in_array($query['op'], array('Download', 'Visualize')) ? $query['op'] : '';
+    $op = isset($query['op']) && in_array($query['op'], array('Download', 'Analyze')) ? $query['op'] : '';
     $datasetid = isset($query['datasetid']) ? $query['datasetid'] : '';
     return array('type' => $type, 'year' => $years, 'country' => $countries, 'indicator' => $indicators, 'op' => $op, 'datasetid' => $datasetid);
   }

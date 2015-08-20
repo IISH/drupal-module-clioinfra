@@ -1,0 +1,34 @@
+<?php
+
+// A module to display the visualizations. The available visualizations will be configurable.
+
+/**
+ * Implements hook_menu().
+ */
+function clio_analyze_stats_menu() {
+  $items = array();
+  $type = variable_get('clio_analyze_default', '') == 'stats' ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK;
+  $items['analyze/%/stats'] = array(
+    'title'            => 'Stats',
+    'page callback'    => 'clio_analyze_stats_view',
+    'page arguments'   => array(1),
+    'access arguments' => array('analyze datasets'),
+    'type'             => $type,
+    'weight'           => 2,
+  );  
+  return $items;
+}
+
+
+function clio_analyze_stats_view($datasetid) {
+  $content = 'stats';
+  $output = array (
+    'maps' => array(
+      '#type' => 'markup',
+      '#markup' => $content,
+     )
+  );
+  return $output;
+}
+
+

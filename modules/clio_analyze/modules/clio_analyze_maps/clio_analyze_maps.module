@@ -1,0 +1,135 @@
+<?php
+
+// A module to display the visualizations. The available visualizations will be configurable.
+
+/**
+ * Implements hook_menu().
+ */
+function clio_analyze_maps_menu() {
+  $items = array();
+  $type = variable_get('clio_analyze_default', '') == 'maps' ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK;
+  $items['analyze/%/maps'] = array(
+    'title'            => 'Maps',
+    'page callback'    => 'clio_analyze_maps_view',
+    'page arguments'   => array(1),
+    'access arguments' => array('analyze datasets'),
+    'type'             => $type,
+    'weight'           => 1,
+  );
+  return $items;
+}
+
+
+function clio_analyze_maps_libraries_info() {
+  $libraries['topojson'] = array(
+    'name' => 'TopoJSON',
+    'vendor url' => 'https://github.com/mbostock/topojson',
+    'download url' => 'https://github.com/mbostock/topojson/archive/master.zip',
+    'files' => array(
+      'js' => array(
+        'topojson.js',
+      ),
+    ),
+    'version arguments' => array(
+      'file' => 'topojson.js',
+      'pattern' => '/version\: \"([0-9\.]*)\"/',
+      'lines' => 3,
+      'cols' => 40,
+    ),
+  );
+  $libraries['d3.tip'] = array(
+    'name' => 'd3-tip',
+    'vendor url' => 'https://github.com/Caged/d3-tip',
+    'download url' => 'https://raw.github.com/Caged/d3-tip/master/index.js',
+    'version' => '0.0',
+    'files' => array(
+      'js' => array(
+        'index.js',
+      ),
+    ),
+  );  
+  $libraries['d3.geo.projection'] = array(
+    'name' => 'd3.geo.projection',
+    'vendor url' => 'https://github.com/d3/d3-geo-projection/',
+    'download url' => 'https://github.com/d3/d3-geo-projection/archive/master.zip',
+    'version' => '0.0',
+    'files' => array(
+      'js' => array(
+        'd3.geo.projection.min.js',
+      ),
+    ),
+  );  
+  $libraries['d3.svg.legend'] = array(
+    'name' => 'd3-svg-legend',
+    'vendor url' => 'https://github.com/emeeks/d3-svg-legend',
+    'download url' => 'https://github.com/emeeks/d3-svg-legend/archive/master.zip',
+    'version' => '0.0',
+    'files' => array(
+      'js' => array(
+        'legend.js',
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+
+// TODO Add parameters.
+function clio_analyze_maps_form_clio_analyze_config_form_alter(&$form, &$form_state, $form_id) {
+  $form['clio_analyze_map_api'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('Map API'),
+    '#description' => t('The url of the API providing the maps.'),
+    '#default_value' => variable_get('clio_analyze_map_api', ''),
+    '#element_validate' => array('clio_validate_api'),
+  );
+}
+
+
+/*
+ * TODO make this a form
+ */
+function clio_analyze_maps_view($datasetid) {
+  // TODO Validate for realz.
+  $datasetid = isset($datasetid) ? rawurldecode($datasetid) : '';
+  // TODO: initial year dynamically computed in js?
+
+  // Temporary values.
+  // Where does 26:27 come from?
+  $datasetid = 'hdl:10622/EKPBIZ:26:27';
+  $year = 1980;
+  $settings = array(
+    'mapapi' => variable_get('clio_analyze_map_api', ''),
+    'datapi' => variable_get('clio_analyze_data_api', ''),
+    'year'   => $year,
+    'handle' => $datasetid,
+    'div'    => 'map',
+  );
+  $content = '<div class="map"></div>';
+
+  if (!($datasetid)) {
+    drupal_set_message(t('Incorrect dataset id.'), 'error');
+  }
+  else if (!($settings['mapapi'] && $settings['datapi'])) {
+    drupal_set_message(t('The map visualization is not configured correctly.'), 'error');
+  }
+  else {
+    libraries_load('d3');
+    libraries_load('d3.tip');
+    libraries_load('d3.geo.projection');
+    libraries_load('d3.svg.legend');
+    libraries_load('topojson');
+    drupal_add_css(drupal_get_path('module', 'clio_analyze_maps') . "/css/clio-analyze.css");  
+    drupal_add_js(drupal_get_path('module', 'clio_analyze_maps') . "/js/clio-analyze-maps.js");  
+    drupal_add_js(array('clioVisualize' => $settings), 'setting');
+  }
+  $content .= $datasetid;
+  $output = array (
+    'maps' => array(
+      '#type' => 'markup',
+      '#markup' => $content,
+     )
+  );
+  return $output;
+}
+

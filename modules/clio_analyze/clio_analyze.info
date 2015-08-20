@@ -1,5 +1,5 @@
-name = Clio Visualize
-description = Visualize Clio Infra datasets
+name = Clio Analyze
+description = Analyze Clio Infra datasets using several visualizations
 core = 7.x
 package = Clio Infra
 version = 7.x-4.0
