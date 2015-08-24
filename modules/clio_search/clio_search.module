@@ -264,6 +264,7 @@ EOB;
   if ($type == 'modern') {
     if ($options = clio_search_taxonomy_options('countries')) {
       $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
+      $selectall .= ", selectionFooter: \"<a href='#' id='deselect-all-countries'>deselect all</a>\"";
     }
     else {
       drupal_set_message(t('No countries available.'), 'error');
@@ -284,6 +285,11 @@ EOB;
           ),
           array(
            'data' => "jQuery('#select-all-countries').click(function(){jQuery('#edit-country').multiSelect('select_all'); return false;})",
+           'type' => 'inline',
+           'scope' => 'footer',
+          ),
+          array(
+           'data' => "jQuery('#deselect-all-countries').click(function(){jQuery('#edit-country').multiSelect('deselect_all'); return false;})",
            'type' => 'inline',
            'scope' => 'footer',
           ),
