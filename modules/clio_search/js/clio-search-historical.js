@@ -17,7 +17,7 @@
           $('#geobox').typeahead({
             dynamic: true,
             // delay: 300,
-            minLength: 1,
+            minLength: 3,
             order: "asc",
             offset: true, // Country name should start with input string.
             accent: true, // Ignore accents.
@@ -26,11 +26,13 @@
             display: "name",
             source: {
               url: {
-                type: "POST",
+                type: "GET",
                 url: Drupal.settings.clioSearch.geocodeapi,
                 data: {
-                  q: "{{query}}",
-                  myKey: "myValue" // Add API key here.
+                  name: "{{query}}",
+                  after: function () { return $('#edit-year-min').val(); },
+                  before: function () { return $('#edit-year-max').val(); }
+                  //, myKey: "myValue" // Add API key here.
                 }
               }
             },
