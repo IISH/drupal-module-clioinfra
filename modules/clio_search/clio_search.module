@@ -241,7 +241,7 @@ EOB;
     '#default_value' => CLIO_MAX_YEAR,
   );
 
-  if (!($options = clio_search_taxonomy_options('indicators'))) {
+  if (!($options = clio_search_taxonomy_options('indicators', 'field_indicator_id'))) {
     drupal_set_message(t('No indicators available.'), 'error');
   }
   $form['indicator'] = array(
@@ -262,7 +262,7 @@ EOB;
   );
   
   if ($type == 'modern') {
-    if ($options = clio_search_taxonomy_options('countries')) {
+    if ($options = clio_search_taxonomy_options('countries', 'field_country_id')) {
       $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
       $selectall .= ", selectionFooter: \"<a href='#' id='deselect-all-countries'>deselect all</a>\"";
     }
@@ -584,12 +584,19 @@ function clio_search_taxonomy_get_leaves($machine_name, $parent = 0) {
 }
 
 
-function clio_search_taxonomy_options($machine_name) {
+/**
+ *
+ */
+function clio_search_taxonomy_options($machine_name, $field_name) {
   $options = array();
   $vocabulary = taxonomy_vocabulary_machine_name_load($machine_name);
   $tree = taxonomy_get_tree($vocabulary->vid);
   foreach ($tree as $item) {
-    $options[$item->tid] = str_repeat('-', $item->depth) . ' ' . $item->name;
+    $term = taxonomy_term_load($item->tid);
+    if ($ids = field_get_items('taxonomy_term', $term, $field_name)) {
+      $id = $ids[0]['value'];
+      $options[$id] = str_repeat('-', $item->depth) . ' ' . $item->name;
+    }
   }
   return $options;
 }
