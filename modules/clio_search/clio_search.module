@@ -350,26 +350,40 @@ function clio_search_results() {
     $query = array();
     foreach ($params as $key => $value) {
       if (!empty($value)) {
-        $query[$key] = $value;
+        // TODO Cleaner than this.
+        $index = ($key == 'indicator') ? 'i' : $key;
+        $index = ($index == 'country') ? 'c' : $index;
+        $index = ($index == 'year') ? 'y' : $index;
+        $query[$index] = $value;
       }
     }
     $querylink = l("query", $path, array('query' => $query));
-    // TODO request search api and receive results
-    // Obviously this should be a POST
+    $query = url($path, array('query' => $query));
+    // TODO error check. Also input and output validation.
+    // Obviously this should be a POST. See php.net file_get_contents example #4
+    $result = file_get_contents($query);
+    // $result = utf8_encode($result);
+    $data = drupal_json_decode($result);
   }
   
-  $indicators = $params['indicator'];
-  
   $datasets = array();
-  foreach ($indicators as $indicatortid) {
-    $datasets[$indicatortid] = array(
+  foreach ($data as $key => $value) {
+    $datasets[$key] = array(
+      'datasetid' => $value['pid'],
+      'title' => $value['indicator'],
+      'topic' => $value['topic'],
+      'description' => $value['description'],
+    );
+  }
+
+/*
+  $indicators = $params['indicator'];
+    foreach ($indicators as $indicatorid) {
+    $datasets[$indicatorid] = array(
       'datasetid' => 'hdl:10622/F16UDU',
-//      'datasetid' => 'hdl:10622/0HOJBV',
       'title' => 'Example dataset title',
       'description' => 'A short description of the dataset',
     );
-
-/*
     $result = clio_search_db_query($indicatortid, $params['year'], $params['country'], 1);
     if ($result->rowCount()) {
       $indicator = taxonomy_term_load($indicatortid);
@@ -382,20 +396,20 @@ function clio_search_results() {
         'topic' => $topic->name,
       );
     }
-*/
   }
+*/
 
   if (count($datasets)) {
     // The table with results.
 //    $select = '<input type="checkbox" value="Download" name="id">';
     $select = '';
-    $header = array($select, t('Dataset'), t('Description'), '');
+    $header = array($select, t('Dataset'), t('Topic'), t('Description'), '');
     $rows = array();
     unset($params['indicator']); // TODO: always set?
-    foreach ($datasets as $tid => $info) {
+    foreach ($datasets as $id => $info) {
       $downloadform = drupal_get_form('clio_search_download_form', $params, $info['datasetid']);
       $buttons = drupal_render($downloadform);
-      $rows[] = array($select, $info['title'],  $info['description'], $buttons);
+      $rows[] = array($select, $info['title'], $info['topic'],  $info['description'], $buttons);
     }
     $content = '<div class="searchresults">';
     $content .= theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE));

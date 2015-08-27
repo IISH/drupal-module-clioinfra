@@ -120,3 +120,8 @@ INPUT, BUTTON & DROPDOWN
 .typeahead-container * {
   box-sizing: inherit;
 }
+
+.typeahead-dropdown > li > a, 
+.typeahead-list > li > a {
+  white-space: normal;
+}
