@@ -508,11 +508,12 @@ function clio_search_download() {
   $params = clio_search_get_params(TRUE);
   // TODO validate input
   $datasetid = $params['datasetid'];
-// drupal_set_message(print_r($params,TRUE));
   if ($params['op'] == 'Download') {
     $download_url = variable_get('clio_search_download_url', '');
     if ($download_url) {
-      drupal_goto($download_url, array('query' => array('persistentId' => $datasetid)));
+      // TODO Check if zip has a (sane) value.
+      $zip = file_get_contents(url($download_url, array('query' => array('pid' => $datasetid))));
+      drupal_goto($zip);
     }
   }
   else if (($params['op'] == 'Analyze') && (module_exists('clio_analyze'))) {
