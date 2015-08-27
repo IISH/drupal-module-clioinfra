@@ -20,8 +20,46 @@ function clio_analyze_graphs_menu() {
 }
 
 
+// TODO Add parameters.
+function clio_analyze_graphs_form_clio_analyze_config_form_alter(&$form, &$form_state, $form_id) {
+  $form['clio_analyze_graph_api'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('Graph API'),
+    '#description' => t('The url of the API providing the graph data.'),
+    '#default_value' => variable_get('clio_analyze_graph_api', ''),
+    '#element_validate' => array('clio_validate_api'),
+  );
+}
+
+
 function clio_analyze_graphs_view($datasetid) {
-  $content = 'graphs';
+  // TODO Validate for realz.
+  $datasetid = isset($datasetid) ? rawurldecode($datasetid) : '';
+
+  // Temporary values.
+  // Where does 26:27 come from?
+//  $datasetid = 'hdl:10622/EKPBIZ:26:27';
+  $settings = array(
+    'graphapi' => variable_get('clio_analyze_graph_api', ''),
+    'handle' => $datasetid,
+    'div'    => 'graph',
+  );
+  $content = '<div class="graph"></div>';
+
+  if (!($datasetid)) {
+    drupal_set_message(t('Incorrect dataset id.'), 'error');
+  }
+  else if (!($settings['graphapi'])) {
+    drupal_set_message(t('The graph visualization is not configured correctly.'), 'error');
+  }
+  else {
+    libraries_load('d3');
+    drupal_add_css(drupal_get_path('module', 'clio_analyze_graphs') . "/css/clio-analyze-graphs.css");  
+    drupal_add_js(drupal_get_path('module', 'clio_analyze_graphs') . "/js/clio-analyze-graphs.js");  
+    drupal_add_js(array('clioAnalyzeGraphs' => $settings), 'setting');
+  }
+  $content .= $datasetid;
+
   $output = array (
     'maps' => array(
       '#type' => 'markup',

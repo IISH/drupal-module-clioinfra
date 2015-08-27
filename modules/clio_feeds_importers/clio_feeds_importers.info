@@ -1,7 +1,8 @@
 name = Clio Feeds importers
+description = Importers for countries and indicators
 core = 7.x
-package = Clio Infra Site
-version = 7.x-1.4
+package = Clio Infra
+version = 7.x-4.0
 dependencies[] = ctools
 dependencies[] = feeds
 dependencies[] = feeds_ex

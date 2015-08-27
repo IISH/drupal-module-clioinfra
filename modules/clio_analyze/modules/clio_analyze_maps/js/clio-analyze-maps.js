@@ -1,8 +1,8 @@
 (function ($) {
-  Drupal.behaviors.clioVisualize = {
+  Drupal.behaviors.clioAnalyzeMaps = {
     attach: function (context, settings) {
-      $('div.' + settings.clioVisualize.div, context)
-        .once('clio-visualize', function () {
+      $('div.' + settings.clioAnalyzeMaps.div, context)
+        .once('clio-analyze-maps', function () {
           showmap();
         });
     }
@@ -11,11 +11,11 @@
 
 function showmap(varname) {
 
-    var div    = Drupal.settings.clioVisualize.div;
-    var year   = Drupal.settings.clioVisualize.year;
-    var handle = Drupal.settings.clioVisualize.handle;
-    var mapapi = Drupal.settings.clioVisualize.mapapi;
-    var datapi = Drupal.settings.clioVisualize.datapi;
+    var div    = Drupal.settings.clioAnalyzeMaps.div;
+    var year   = Drupal.settings.clioAnalyzeMaps.year;
+    var handle = Drupal.settings.clioAnalyzeMaps.handle;
+    var mapapi = Drupal.settings.clioAnalyzeMaps.mapapi;
+    var datapi = Drupal.settings.clioAnalyzeMaps.datapi;
     mapapi = mapapi + "?world=on&year=" + year;
     datapi = datapi + "?api=data&year=" + year + '&var=' + varname + '&handle=' + handle;
 

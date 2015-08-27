@@ -359,11 +359,16 @@ function clio_search_results() {
     }
     $querylink = l("query", $path, array('query' => $query));
     $query = url($path, array('query' => $query));
-    // TODO error check. Also input and output validation.
-    // Obviously this should be a POST. See php.net file_get_contents example #4
-    $result = file_get_contents($query);
-    // $result = utf8_encode($result);
-    $data = drupal_json_decode($result);
+    $opts = array('http' => array('method' => 'GET'));
+    $context = stream_context_create($opts);
+    // TODO Input and output validation.
+    if ($result = file_get_contents($query, FALSE, $context)) {
+      // $result = utf8_encode($result);
+      $data = drupal_json_decode($result);
+    }
+    else {
+      // TODO
+    }
   }
   
   $datasets = array();
@@ -377,6 +382,7 @@ function clio_search_results() {
   }
 
 /*
+  // TODO Display indicators that were selected but not in results as greyed out.
   $indicators = $params['indicator'];
     foreach ($indicators as $indicatorid) {
     $datasets[$indicatorid] = array(
@@ -508,12 +514,35 @@ function clio_search_download() {
   $params = clio_search_get_params(TRUE);
   // TODO validate input
   $datasetid = $params['datasetid'];
+
+  $query = array();
+  foreach ($params as $key => $value) {
+    if (!empty($value)) {
+      // TODO Cleaner than this.
+      if ($key == 'year') {
+        $query['y'] = $value;
+      }
+      else if ($key == 'country') {
+        $query['c'] = $value;
+      }
+    }
+  }
+  $query['pid'] = $datasetid;
+
   if ($params['op'] == 'Download') {
     $download_url = variable_get('clio_search_download_url', '');
     if ($download_url) {
-      // TODO Check if zip has a (sane) value.
-      $zip = file_get_contents(url($download_url, array('query' => array('pid' => $datasetid))));
-      drupal_goto($zip);
+      $opts = array('http' => array('method' => 'GET'));
+      $context = stream_context_create($opts);
+      // TODO Check if zip has a sane value.
+      if ($zip = file_get_contents(url($download_url, array('query' => $query)), FALSE, $context)) {
+        // drupal_goto($zip);
+        drupal_goto(url($download_url, array('query' => $query)));
+      }
+      else {
+        drupal_set_message('An error occurred while creating the download file.', 'error');
+        drupal_goto('/datasets');
+      }
     }
   }
   else if (($params['op'] == 'Analyze') && (module_exists('clio_analyze'))) {
@@ -523,12 +552,6 @@ function clio_search_download() {
     drupal_set_message('An error occurred while creating the download file.', 'error');
     drupal_goto('/datasets');
   }
-}
-
-
-function clio_search_download_form_submit() { 
-  $params = clio_search_get_params();  
-  $indicators = $params['indicator'];
 }
 
 

@@ -24,13 +24,15 @@ function clio_feeds_importers_feeds_importer_default() {
         'use_pubsubhubbub' => FALSE,
         'designated_hub' => '',
         'request_timeout' => NULL,
+        'auto_scheme' => 'http',
+        'accept_invalid_cert' => FALSE,
       ),
     ),
     'parser' => array(
       'plugin_key' => 'FeedsExJsonPath',
       'config' => array(
         'context' => array(
-          'value' => '$.oecd.*',
+          'value' => '$.*',
         ),
         'sources' => array(
           'country' => array(
@@ -39,17 +41,17 @@ function clio_feeds_importers_feeds_importer_default() {
             'debug' => 0,
             'weight' => '1',
           ),
-          'region' => array(
-            'name' => 'region',
-            'value' => 'region',
-            'debug' => 0,
-            'weight' => '2',
-          ),
           'ccode' => array(
             'name' => 'ccode',
             'value' => 'ccode',
             'debug' => 0,
-            'weight' => '3',
+            'weight' => '2',
+          ),
+          'pname' => array(
+            'name' => 'pname',
+            'value' => 'pname',
+            'debug' => 0,
+            'weight' => '4',
           ),
         ),
         'display_errors' => 1,
@@ -80,23 +82,24 @@ function clio_feeds_importers_feeds_importer_default() {
             'unique' => 1,
           ),
           3 => array(
-            'source' => 'region',
+            'source' => 'pname',
             'target' => 'parent',
-            'unique' => 1,
+            'unique' => FALSE,
           ),
         ),
         'update_existing' => '2',
         'input_format' => 'plain_text',
         'skip_hash_check' => 0,
         'bundle' => 'countries',
+        'update_non_existent' => 'skip',
       ),
     ),
     'content_type' => '',
     'update' => 0,
-    'import_period' => 1800,
+    'import_period' => '86400',
     'expire_period' => 3600,
-    'import_on_create' => TRUE,
-    'process_in_background' => FALSE,
+    'import_on_create' => 1,
+    'process_in_background' => 0,
   );
   $export['countries'] = $feeds_importer;
 
@@ -114,6 +117,8 @@ function clio_feeds_importers_feeds_importer_default() {
         'use_pubsubhubbub' => FALSE,
         'designated_hub' => '',
         'request_timeout' => NULL,
+        'auto_scheme' => 'http',
+        'accept_invalid_cert' => FALSE,
       ),
     ),
     'parser' => array(
@@ -124,16 +129,22 @@ function clio_feeds_importers_feeds_importer_default() {
         ),
         'sources' => array(
           'indicator' => array(
-            'name' => 'indicator',
-            'value' => 'indicator',
+            'name' => 'Name',
+            'value' => 'Name',
             'debug' => 0,
             'weight' => '1',
           ),
           'id' => array(
-            'name' => 'id',
-            'value' => 'id',
+            'name' => 'ID',
+            'value' => 'ID',
             'debug' => 0,
             'weight' => '2',
+          ),
+          'parent_name' => array(
+            'name' => 'parent name',
+            'value' => 'parent name',
+            'debug' => 0,
+            'weight' => '4',
           ),
         ),
         'display_errors' => 1,
@@ -159,13 +170,13 @@ function clio_feeds_importers_feeds_importer_default() {
             'unique' => FALSE,
           ),
           2 => array(
-            'source' => 'topic',
-            'target' => 'parent',
+            'source' => 'id',
+            'target' => 'guid',
             'unique' => 1,
           ),
           3 => array(
-            'source' => 'id',
-            'target' => 'guid',
+            'source' => 'parent_name',
+            'target' => 'parent',
             'unique' => FALSE,
           ),
         ),
@@ -173,14 +184,15 @@ function clio_feeds_importers_feeds_importer_default() {
         'input_format' => 'plain_text',
         'skip_hash_check' => 0,
         'bundle' => 'indicators',
+        'update_non_existent' => 'skip',
       ),
     ),
     'content_type' => '',
     'update' => 0,
-    'import_period' => 1800,
+    'import_period' => '86400',
     'expire_period' => 3600,
-    'import_on_create' => TRUE,
-    'process_in_background' => FALSE,
+    'import_on_create' => 1,
+    'process_in_background' => 0,
   );
   $export['indicators'] = $feeds_importer;
 

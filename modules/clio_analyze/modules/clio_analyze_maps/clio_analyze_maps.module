@@ -96,7 +96,7 @@ function clio_analyze_maps_view($datasetid) {
 
   // Temporary values.
   // Where does 26:27 come from?
-  $datasetid = 'hdl:10622/EKPBIZ:26:27';
+//  $datasetid = 'hdl:10622/EKPBIZ:26:27';
   $year = 1980;
   $settings = array(
     'mapapi' => variable_get('clio_analyze_map_api', ''),
@@ -121,7 +121,7 @@ function clio_analyze_maps_view($datasetid) {
     libraries_load('topojson');
     drupal_add_css(drupal_get_path('module', 'clio_analyze_maps') . "/css/clio-analyze.css");  
     drupal_add_js(drupal_get_path('module', 'clio_analyze_maps') . "/js/clio-analyze-maps.js");  
-    drupal_add_js(array('clioVisualize' => $settings), 'setting');
+    drupal_add_js(array('clioAnalyzeMaps' => $settings), 'setting');
   }
   $content .= $datasetid;
   $output = array (
