@@ -1,0 +1,56 @@
+Clio Infra v4 documentation
+
+Import:
+
+Two importers are configured using the Feeds module. Using these importers, external lists of countries and indicators are mapped to Drupal taxonomy terms.
+See /admin/structure/feeds:
+Under Basic settings the import is scheduled at once per day.
+Under Mapping the fields from the lists are mapped to Drupal taxonomy fields.
+See /import:
+Here the url of the external list is set. The importer expects json.
+On this page the import can be run manually as well.
+Updates will be overwritten. Entries that are deleted from the external list will not be deleted in Drupal.
+Per entry the importer expects a name, id, and parent_id.
+
+Custom module:
+
+The custom module consists of a base module, and two submodules: clio_search and clio_analyze.
+
+clio_search 
+
+Creates the search page and search results page.
+The search page uses three javascript libraries: 
+- multiselect.js, see http://loudev.com
+This converts a select list to two adjacent boxes, to easily select and deselect multiple list items
+- quicksearch, see https://github.com/riklomas/quicksearch
+Adds a search box to search in the list
+- jquery.typeahead, see www.runningcoder.org/jquerytypeahead/
+Used on the historical search page to search the external geocoder API. The suggested list items are overlayed on top of the multiselect box.
+
+Search results:
+A request is sent to an external API.
+
+Download:
+A request is sent to an external API, the response of which contains a url to a zip file. This url is sent back to the browser.
+
+The url's of the external API's are configurable in the backend:
+/admin/config/clio/search
+
+clio_analyze
+
+This module consists of a main module, and a submodule for every tab.
+Tabs can be enabled by enabling the submodule. The default selected tab can be configured in the backend.
+The submodules all have the same structure, so it should be easy to extend the visualizations. The structure:
+- required javascript libraries
+- configuration form
+- the visualization itself, where the libraries are included, and a dedicated javascript file is added to the page
+- this javascript file is included from a subdirectory js; js libraries are included using the Libraries module
+- stylesheet for the visualization as separate file
+- parameters are transfered from PHP to javascript using Drupal.settings
+
+CORS:
+
+Several javascript scripts send requests to external API's. These API's should allow Cross-Origin Resource Sharing. This can be enabled by setting a header in Apache:
+Header set Access-Control-Allow-Origin "*"
+See http://enable-cors.org/server_apache.html
+
