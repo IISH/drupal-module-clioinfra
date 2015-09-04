@@ -1,6 +1,6 @@
 <?php
 
-// A module to display the visualizations. The available visualizations will be configurable.
+// A module to display the graph visualization.
 
 /**
  * Implements hook_menu().
@@ -20,6 +20,9 @@ function clio_analyze_graphs_menu() {
 }
 
 
+/**
+ * Add API url to configuration form.
+ */
 // TODO Add parameters.
 function clio_analyze_graphs_form_clio_analyze_config_form_alter(&$form, &$form_state, $form_id) {
   $form['clio_analyze_graph_api'] = array(
@@ -32,13 +35,14 @@ function clio_analyze_graphs_form_clio_analyze_config_form_alter(&$form, &$form_
 }
 
 
+/*
+ * Display the graph.
+ * TODO make this a form
+ */
 function clio_analyze_graphs_view($datasetid) {
   // TODO Validate for realz.
   $datasetid = isset($datasetid) ? rawurldecode($datasetid) : '';
 
-  // Temporary values.
-  // Where does 26:27 come from?
-//  $datasetid = 'hdl:10622/EKPBIZ:26:27';
   $settings = array(
     'graphapi' => variable_get('clio_analyze_graph_api', ''),
     'handle' => $datasetid,
@@ -58,8 +62,9 @@ function clio_analyze_graphs_view($datasetid) {
     drupal_add_js(drupal_get_path('module', 'clio_analyze_graphs') . "/js/clio-analyze-graphs.js");  
     drupal_add_js(array('clioAnalyzeGraphs' => $settings), 'setting');
   }
-  $content .= $datasetid;
-
+  if (CLIO_DEBUG) {
+    $content .= $datasetid;
+  }
   $output = array (
     'maps' => array(
       '#type' => 'markup',
@@ -68,5 +73,4 @@ function clio_analyze_graphs_view($datasetid) {
   );
   return $output;
 }
-
 

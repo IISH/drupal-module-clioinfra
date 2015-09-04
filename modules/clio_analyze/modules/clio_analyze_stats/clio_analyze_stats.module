@@ -1,6 +1,6 @@
 <?php
 
-// A module to display the visualizations. The available visualizations will be configurable.
+// A module to display the statistical visualization.
 
 /**
  * Implements hook_menu().
@@ -20,6 +20,9 @@ function clio_analyze_stats_menu() {
 }
 
 
+/**
+ *  Show the statistical visualization.
+ */
 function clio_analyze_stats_view($datasetid) {
   $content = 'stats';
   $output = array (
@@ -30,5 +33,4 @@ function clio_analyze_stats_view($datasetid) {
   );
   return $output;
 }
-
 

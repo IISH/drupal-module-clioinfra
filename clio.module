@@ -13,6 +13,7 @@ define('CLIO_MIN_YEAR', 1500);
 define('CLIO_MAX_YEAR', 2013);
 // CSV delimiter.
 define('CLIO_DELIMITER', ',');
+define('CLIO_DEBUG', TRUE);
 
 
 

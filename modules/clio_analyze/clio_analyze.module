@@ -45,6 +45,9 @@ function clio_analyze_permission() {
 }
 
 
+/**
+ * A page to display if no visualization is chosen.
+ */
 function clio_analyze_intro() {
   $content = 'Intro to analyzing datasets.';
   $output = array (
@@ -57,6 +60,9 @@ function clio_analyze_intro() {
 }
 
 
+/**
+ * Implements hook_libraries_info().
+ */
 function clio_analyze_libraries_info() {
   $libraries['d3'] = array(
     'name' => 'D3',
@@ -78,6 +84,9 @@ function clio_analyze_libraries_info() {
 }
 
 
+/**
+ * Configuration form for API url's.
+ */
 // TODO Add parameters.
 function clio_analyze_config_form($form, &$form_state) {
   $form = array();
