@@ -8,10 +8,9 @@
 function clio_analyze_graphs_menu() {
   $items = array();
   $type = variable_get('clio_analyze_default', '') == 'graphs' ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK;
-  $items['analyze/%/graphs'] = array(
+  $items['analyze/graphs'] = array(
     'title'            => 'Graphs',
     'page callback'    => 'clio_analyze_graphs_view',
-    'page arguments'   => array(1),
     'access arguments' => array('analyze datasets'),
     'type'             => $type,
     'weight'           => 2,
@@ -25,52 +24,51 @@ function clio_analyze_graphs_menu() {
  */
 // TODO Add parameters.
 function clio_analyze_graphs_form_clio_analyze_config_form_alter(&$form, &$form_state, $form_id) {
-  $form['clio_analyze_graph_api'] = array(
-    '#type'  => 'textfield',
-    '#title' => t('Graph API'),
-    '#description' => t('The url of the API providing the graph data.'),
-    '#default_value' => variable_get('clio_analyze_graph_api', ''),
-    '#element_validate' => array('clio_validate_api'),
+  $config = variable_get('clio_analyze_graphs', array());
+  $form['clio_analyze_graphs'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Graphs'),
+    '#tree' => TRUE,
+    '#collapsible' => TRUE, 
+    '#collapsed' => FALSE,
   );
+  $form['clio_analyze_graphs']['api'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('API'),
+    '#description' => t('The url of the API providing the graphs.'),
+    '#default_value' => isset($config['api']) ? $config['api'] : '',
+  );
+  $form['clio_analyze_graphs']['height'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('Height'),
+    '#size' => 4,
+    '#maxlength' => 4,
+    '#field_suffix' => 'px',
+    '#description' => t('The height of the iframe.'),
+    '#default_value' => isset($config['height']) ? $config['height'] : '500',
+  );
+  $form['#submit'][] = 'clio_analyze_graphs_config_submit';
+}
+
+
+function clio_analyze_graphs_config_submit(&$form, &$form_state) {
+  $settings = $form_state['values']['clio_analyze_graphs'];
+  foreach ($settings as $key => $value) {
+    if (!$value['api']) {
+      unset($settings[$key]);
+    }
+  }
+  variable_set('clio_analyze_graphs', $settings);
 }
 
 
 /*
- * Display the graph.
- * TODO make this a form
+ * Display the visualization.
  */
-function clio_analyze_graphs_view($datasetid) {
-  // TODO Validate for realz.
-  $datasetid = isset($datasetid) ? rawurldecode($datasetid) : '';
-
-  $settings = array(
-    'graphapi' => variable_get('clio_analyze_graph_api', ''),
-    'handle' => $datasetid,
-    'div'    => 'graph',
+function clio_analyze_graphs_view() {
+  $query = array(
+    'aggr' => 'on',
   );
-  $content = '<div class="graph"></div>';
-
-  if (!($datasetid)) {
-    drupal_set_message(t('Incorrect dataset id.'), 'error');
-  }
-  else if (!($settings['graphapi'])) {
-    drupal_set_message(t('The graph visualization is not configured correctly.'), 'error');
-  }
-  else {
-    libraries_load('d3');
-    drupal_add_css(drupal_get_path('module', 'clio_analyze_graphs') . "/css/clio-analyze-graphs.css");  
-    drupal_add_js(drupal_get_path('module', 'clio_analyze_graphs') . "/js/clio-analyze-graphs.js");  
-    drupal_add_js(array('clioAnalyzeGraphs' => $settings), 'setting');
-  }
-  if (CLIO_DEBUG) {
-    $content .= $datasetid;
-  }
-  $output = array (
-    'maps' => array(
-      '#type' => 'markup',
-      '#markup' => $content,
-     )
-  );
-  return $output;
+  return clio_analyze_view('graphs', $query);
 }
 
