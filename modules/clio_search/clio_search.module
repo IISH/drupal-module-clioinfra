@@ -21,7 +21,7 @@ function clio_search_menu() {
   );
   $items['datasets/search/modern'] = array(
     'title' => 'Modern',
-    'access arguments' => array('search datasets', 'modern'),
+    'access arguments' => array('search datasets'),
     'type'             => MENU_DEFAULT_LOCAL_TASK,
     'weight' => 1,
   );
