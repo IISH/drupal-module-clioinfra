@@ -21,7 +21,7 @@ function clio_search_menu() {
   );
   $items['datasets/search/modern'] = array(
     'title' => 'Modern',
-    'access arguments' => array('search datasets'),
+    'access arguments' => array('search datasets', 'modern'),
     'type'             => MENU_DEFAULT_LOCAL_TASK,
     'weight' => 1,
   );
@@ -182,6 +182,7 @@ function clio_search_config_form($form, &$form_state) {
  * Show a selection form with years, countries and indicators.
  * Either use modern or historical boundaries.
  * Historical country names and codes are requested live from an external API.
+ * The default selection is stored in the session.
  *
  * @param $tab
  *   Will be set to 'modern' or 'historical' when called from the selection page.
@@ -194,6 +195,10 @@ function clio_search_select_form($form, &$form_state, $tab = NULL) {
   else {
     // Validation.
     $type = ($tab == 'historical') ? 'historical' : 'modern';
+  }
+  if ($tab && ($tab != $params['type'][0])) {
+    // We switched type, so don't show country selection as the codes may overlap.
+    $params['country'] = array();
   }
   $title = "Select ($type)";
   if ($tab) {
@@ -344,6 +349,7 @@ EOB;
     );
   }
   else {
+    // historical
     $form['help']['#attached']['libraries_load'][] = array('jquery.typeahead');
     $form['country'] = array(
       '#type' => 'select',
@@ -368,7 +374,12 @@ EOB;
         'month' => variable_get('clio_search_month', ''),
         'day' => variable_get('clio_search_day', ''),
       )),
-    );                      
+    );
+/*
+    if (isset($params['country'])) {
+      $form['country']['#default_value'] = $params['country'];
+    }
+*/                      
     $form['type'] = array (
       '#type' => 'hidden',
       '#value' => 'historical',
@@ -589,7 +600,7 @@ function clio_search_show_results() {
       }
     }
     $querylink = l("query", $path, array('query' => $query));
-    $content = '<div>Debug data: ' . $querylink . '</div>' . $content;
+    $content .= '<div>Debug data: ' . $querylink . '</div>';
   }
   return $content;
 }
