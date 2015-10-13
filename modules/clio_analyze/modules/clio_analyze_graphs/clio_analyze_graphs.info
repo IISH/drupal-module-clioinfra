@@ -1,9 +1,0 @@
-name = Clio Analyze Graphs
-description = Visualize Clio Infra datasets using graphs
-core = 7.x
-package = Clio Infra
-version = 7.x-4.0
-dependencies[] = clio_analyze
-dependencies[] = jquery_update
-dependencies[] = libraries
-
