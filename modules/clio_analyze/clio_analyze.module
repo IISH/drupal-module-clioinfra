@@ -233,8 +233,11 @@ function clio_analyze_view($viz) {
 
   $content = '';
 
+  // First clear all status messages, leaving errors intact.
+  drupal_get_messages('status');
+  
   if (!($datasetid)) {
-    drupal_set_message(t('Incorrect dataset id.'), 'error');
+    drupal_set_message(t('Please select a dataset.'));
   }
   else if (!$api) {
     drupal_set_message(t('The visualization is not configured correctly.'), 'error');
@@ -257,6 +260,11 @@ function clio_analyze_view($viz) {
     </div>';
   }
   
+  $classes = array('collapsible', 'adjust-selection');
+  if ($datasetid) {
+    // Close the selector if a dataset was selected.
+    $classes[] = 'collapsed';
+  }
   $output = array (
     'vizualization' => array(
       '#type' => 'markup',
@@ -267,7 +275,7 @@ function clio_analyze_view($viz) {
       '#title' => t('Adjust selection'),
       // #collapsible only works when called from drupal_get_form().
       // Therefore we set the collapse function directly.
-      '#attributes' => array('class' => array('collapsible', 'collapsed', 'adjust-selection')),
+      '#attributes' => array('class' => $classes),
       '#attached' => array('js' => array('misc/form.js', 'misc/collapse.js')),
       'form1' => drupal_get_form('clio_search_type_form'),
       'form2' => drupal_get_form('clio_search_select_form'),

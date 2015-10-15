@@ -196,7 +196,7 @@ function clio_search_select_form($form, &$form_state, $tab = NULL) {
     // Validation.
     $type = ($tab == 'historical') ? 'historical' : 'modern';
   }
-  if ($tab && ($tab != $params['type'][0])) {
+  if ($tab && isset($params['type']) && ($tab != $params['type'][0])) {
     // We switched type, so don't show country selection as the codes may overlap.
     $params['country'] = array();
   }
