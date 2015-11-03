@@ -30,8 +30,11 @@
                 type: "GET",
                 url: Drupal.settings.clioSearch.geocodeapi,
                 data: {
+                  // Parameters sent to the geocoder API:
                   name: "{{query}}",
+                  // after: function () { return $('#edit-year-min').val() + day; },
                   after: function () { return $('#edit-year-min').val(); },
+                  // before: function () { return $('#edit-year-max').val() + day; }
                   before: function () { return $('#edit-year-max').val(); }
                   //, myKey: "myValue" // Add API key here.
                 }

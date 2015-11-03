@@ -1,13 +1,123 @@
 <?php
 
 /**
- * Implementation of hook_uninstall().
+ * Implements hook_schema().
  */
-function clio_analyze_uninstall() {
-  // Remove all variables that start with "clio_analyze".
-  $args = array(':module' => 'clio_analyze%');
-  $result = db_query('SELECT name FROM {variable} WHERE name LIKE :module', $args);
-  foreach ($result as $record) {
-    variable_del($record->name);
-  }
+function clio_analyze_schema() {
+  $schema['clio_analyze_viz'] = array(
+    'description' => 'Stores visualizations.',
+    'fields' => array(
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique machine name of the visualization.',
+      ),
+      'label' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Label of the visualization.',
+        'translatable' => TRUE,
+      ),
+      'status' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+        'size' => 'tiny',
+        'description' => 'The status of the visualization. (1 = enabled, 0 = disabled)',
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Weight of visualization to use when listing.',
+      ),
+      'api' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'The url of the API providing the visualization.',
+      ),
+      'height' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 500,
+        'description' => 'The height of the iframe.',
+      ),
+      'parameters' => array(
+        'description' => 'Extra parameters to include in the query to the API.',
+        'type' => 'blob',
+        'not null' => TRUE,
+        'size' => 'big',
+        'serialize' => TRUE,
+      ),
+    ),
+    'primary key' => array('name'),
+    'unique keys' => array(
+      'name' => array('label'),
+    ),
+    'indexes' => array(
+      'status_weight' => array('status', 'weight'),
+    ),
+  );
+
+  return $schema;
 }
+
+/**
+ * Implements hook_install().
+ *
+ * Default visualizations.
+ */
+function clio_analyze_install() {
+  $viz = array(
+    'name' => 'maps',
+    'label' => 'Maps',
+    'status' => 1,
+    'weight' => 1,
+    'api' => 'http://dpe.sandbox.socialhistoryservices.org/collabs/mapslider',
+    'height' => 650,
+    'parameters' => array(
+      array('key' => 'start', 'value' => 'on'),
+      array('key' => 'action', 'value' => 'map'),
+    ),
+  );
+  $viz = (object) $viz;
+
+  clio_analyze_viz_save($viz);
+  $viz = array(
+    'name' => 'graphs',
+    'label' => 'Graphs',
+    'status' => 1,
+    'weight' => 2,
+    'api' => 'http://dpe.sandbox.socialhistoryservices.org/collabs/panel',
+    'height' => 500,
+    'parameters' => array(
+      array('key' => 'start', 'value' => 'on'),
+      array('key' => 'aggr', 'value' => 'on'),
+    ),
+  );
+  $viz = (object) $viz;
+  clio_analyze_viz_save($viz);
+
+  $viz = array(
+    'name' => 'stats',
+    'label' => 'Stats',
+    'status' => 1,
+    'weight' => 3,
+    'api' => 'http://dpe.sandbox.socialhistoryservices.org/collabs/statistics',
+    'height' => 550,
+    'parameters' => array(
+      array('key' => 'start', 'value' => 'on'),
+      array('key' => 'aggr', 'value' => 'on'),
+    ),
+  );
+  $viz = (object) $viz;
+  clio_analyze_viz_save($viz);
+  menu_rebuild();
+}
+
