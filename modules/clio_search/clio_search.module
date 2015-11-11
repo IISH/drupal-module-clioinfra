@@ -207,8 +207,8 @@ function clio_search_select_form($form, &$form_state, $tab = NULL) {
     // We switched type, so don't show country selection as the codes may overlap.
     $params['country'] = array();
   }
-  $title = "Select ($type)";
   if ($tab) {
+    $title = t("Select (@type)", array('@type' => $type));
     drupal_set_title($title);
   }
 

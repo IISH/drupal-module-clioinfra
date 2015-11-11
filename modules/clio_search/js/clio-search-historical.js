@@ -42,14 +42,14 @@
             },
             callback: {
               onClick: function (node, a, item, event) {
-                // Item id's are like "geocron/12345"; we only need the numeric part.
+                // Item id's are formatted like "geacron/12345"; we only need the numeric part.
                 var parts = item.id.split('/');
-                var id = parts[1];
+                var numid = parts[1];
                 // Add item and move to selected box.
                 $('#edit-country')
-                  .multiSelect('addOption', {value: id, text: item.year});
+                  .multiSelect('addOption', {value: numid, text: item.year});
                 $('#edit-country')
-                  .multiSelect('select', id.toString());
+                  .multiSelect('select', numid.toString());
                 // Do not show selected item in input field.
                 node[0].val("");
               },
