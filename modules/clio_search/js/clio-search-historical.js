@@ -32,6 +32,7 @@
                 data: {
                   // Parameters sent to the geocoder API:
                   name: "{{query}}",
+                  // TODO The API currently only accepts year values.
                   // after: function () { return $('#edit-year-min').val() + day; },
                   after: function () { return $('#edit-year-min').val(); },
                   // before: function () { return $('#edit-year-max').val() + day; }
@@ -42,9 +43,15 @@
             },
             callback: {
               onClick: function (node, a, item, event) {
-                // Item id's are formatted like "geacron/12345"; we only need the numeric part.
-                var parts = item.id.split('/');
-                var numid = parts[1];
+                var numid;
+                if (Drupal.settings.clioSearch.compositeId == 1) {
+                  // Item id's are formatted like "geacron/12345"; we only need the numeric part.
+                  var parts = item.id.split('/');
+                  numid = parts[1];
+                }
+                else {
+                  numid = item.id;
+                }
                 // Add item and move to selected box.
                 $('#edit-country')
                   .multiSelect('addOption', {value: numid, text: item.year});

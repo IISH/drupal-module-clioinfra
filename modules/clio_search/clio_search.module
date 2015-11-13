@@ -122,7 +122,7 @@ function clio_search_libraries_info() {
     ),
     'files' => array(
       'js' => array(
-        'dist/jquery.typeahead.min.js',
+        'src/jquery.typeahead.js',
       ),
       'css' => array(
         'dist/jquery.typeahead.min.css',
@@ -166,6 +166,13 @@ function clio_search_config_form($form, &$form_state) {
     '#description' => t('The url of the API providing the geocodes and names of historical countries.'),
     '#default_value' => variable_get('clio_search_geocode_url', ''),
     '#element_validate' => array('clio_validate_api'),
+  );
+  $form['clio_search_composite_id'] = array(
+    '#type'  => 'radios',
+    '#title' => t('Geocode ID'),
+    '#options' => array(0 => t('Numeric'), 1 => t('Composite')),
+    '#description' => t('Select how the ID\'s from the Geocode API are formatted. Composite ID\'s are formatted like "geacron/12345".'),
+    '#default_value' => variable_get('clio_search_composite_id', 0),
   );
   $form['clio_search_month'] = array(
     '#type'  => 'select',
@@ -378,8 +385,9 @@ EOB;
       'type' => 'setting',
       'data' => array('clioSearch' => array(
         'geocodeapi' => variable_get('clio_search_geocode_url', ''),
-        'month' => variable_get('clio_search_month', ''),
-        'day' => variable_get('clio_search_day', ''),
+        'compositeId' => variable_get('clio_search_composite_id', 0),
+        'month' => variable_get('clio_search_month', '01'),
+        'day' => variable_get('clio_search_day', '01'),
       )),
     );
 /*
