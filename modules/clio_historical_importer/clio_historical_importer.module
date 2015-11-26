@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Clio Historical Importer feature.
+ */
+
+include_once 'clio_historical_importer.features.inc';

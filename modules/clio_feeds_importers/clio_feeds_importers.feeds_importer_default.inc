@@ -15,8 +15,8 @@ function clio_feeds_importers_feeds_importer_default() {
   $feeds_importer->api_version = 1;
   $feeds_importer->id = 'countries';
   $feeds_importer->config = array(
-    'name' => 'Countries',
-    'description' => 'Sync countries from an external source',
+    'name' => 'Countries (modern)',
+    'description' => 'Sync modern countries from an external source (hierarchical)',
     'fetcher' => array(
       'plugin_key' => 'FeedsHTTPFetcher',
       'config' => array(
@@ -53,11 +53,17 @@ function clio_feeds_importers_feeds_importer_default() {
             'debug' => 0,
             'weight' => '4',
           ),
+          'pcode' => array(
+            'name' => 'pcode',
+            'value' => 'pcode',
+            'debug' => 0,
+            'weight' => '5',
+          ),
         ),
         'display_errors' => 1,
         'debug_mode' => 1,
         'source_encoding' => array(
-          0 => 'auto',
+          0 => 'UTF-8',
         ),
       ),
     ),
@@ -82,8 +88,8 @@ function clio_feeds_importers_feeds_importer_default() {
             'unique' => 1,
           ),
           3 => array(
-            'source' => 'pname',
-            'target' => 'parent',
+            'source' => 'pcode',
+            'target' => 'parentguid',
             'unique' => FALSE,
           ),
         ),
@@ -92,6 +98,7 @@ function clio_feeds_importers_feeds_importer_default() {
         'skip_hash_check' => 0,
         'bundle' => 'countries',
         'update_non_existent' => 'skip',
+        'insert_new' => 1,
       ),
     ),
     'content_type' => '',
@@ -125,7 +132,7 @@ function clio_feeds_importers_feeds_importer_default() {
       'plugin_key' => 'FeedsExJsonPath',
       'config' => array(
         'context' => array(
-          'value' => '$.*',
+          'value' => '$..data.*',
         ),
         'sources' => array(
           'indicator' => array(
@@ -145,6 +152,12 @@ function clio_feeds_importers_feeds_importer_default() {
             'value' => 'parent name',
             'debug' => 0,
             'weight' => '4',
+          ),
+          'parent_id' => array(
+            'name' => 'parent ID',
+            'value' => 'parent ID',
+            'debug' => 0,
+            'weight' => '5',
           ),
         ),
         'display_errors' => 1,
@@ -175,8 +188,8 @@ function clio_feeds_importers_feeds_importer_default() {
             'unique' => 1,
           ),
           3 => array(
-            'source' => 'parent_name',
-            'target' => 'parent',
+            'source' => 'parent_id',
+            'target' => 'parentguid',
             'unique' => FALSE,
           ),
         ),
@@ -185,6 +198,7 @@ function clio_feeds_importers_feeds_importer_default() {
         'skip_hash_check' => 0,
         'bundle' => 'indicators',
         'update_non_existent' => 'skip',
+        'insert_new' => 1,
       ),
     ),
     'content_type' => '',

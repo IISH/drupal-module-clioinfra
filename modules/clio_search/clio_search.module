@@ -160,28 +160,43 @@ function clio_search_config_form($form, &$form_state) {
     '#default_value' => variable_get('clio_search_download_url', ''),
     '#element_validate' => array('clio_validate_api'),
   );
-  $form['clio_search_geocode_url'] = array(
+  $form['clio_search_use_geocoder'] = array(
+    '#type'  => 'checkbox',
+    '#title' => t('Use Geocoder'),
+    '#description' => t('Use an external geocoding api to provide historical country names and codes. If enabled specify the url below. If disabled a vocabulary with machine name <em>countries_historical</em> wil be used.'),
+    '#default_value' => variable_get('clio_search_use_geocoder', 1),
+  );
+  $form['clio_search_geocode'] = array(
+    '#type'  => 'fieldset',
+    '#title' => t('Geocoder'),
+    '#states' => array(
+      'invisible' => array(
+       ':input[name="clio_search_use_geocoder"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+  $form['clio_search_geocode']['clio_search_geocode_url'] = array(
     '#type'  => 'textfield',
     '#title' => t('Geocode API'),
     '#description' => t('The url of the API providing the geocodes and names of historical countries.'),
     '#default_value' => variable_get('clio_search_geocode_url', ''),
     '#element_validate' => array('clio_validate_api'),
   );
-  $form['clio_search_composite_id'] = array(
+  $form['clio_search_geocode']['clio_search_composite_id'] = array(
     '#type'  => 'radios',
     '#title' => t('Geocode ID'),
     '#options' => array(0 => t('Numeric'), 1 => t('Composite')),
     '#description' => t('Select how the ID\'s from the Geocode API are formatted. Composite ID\'s are formatted like "geacron/12345".'),
     '#default_value' => variable_get('clio_search_composite_id', 0),
   );
-  $form['clio_search_month'] = array(
+  $form['clio_search_geocode']['clio_search_month'] = array(
     '#type'  => 'select',
     '#title' => t('Month'),
     '#options' => drupal_map_assoc(array('01','02','03','04','05','06','07','08','09', '10', '11', '12')),
     '#description' => t('The fixed month that will be used to query the geocode server.'),
     '#default_value' => variable_get('clio_search_month', '01'),
   );
-  $form['clio_search_day'] = array(
+  $form['clio_search_geocode']['clio_search_day'] = array(
     '#type'  => 'select',
     '#title' => t('Day'),
     '#options' => drupal_map_assoc(array_merge(array('01','02','03','04','05','06','07','08','09'),range(10, 31))),
@@ -319,11 +334,15 @@ EOB;
     $form['indicator']['#default_value'] = $params['indicator'];
   }
 
-  if ($type == 'modern') {
-    if ($options = clio_search_taxonomy_options('countries', 'field_country_id')) {
+  // If searching modern countries, or historical countries without the geocoding service,
+  // we show a country list based on a vocabulary.
+  $use_geocoder = variable_get('clio_search_use_geocoder', 1);
+  if (($type == 'modern') || (($type == 'historical') && !$use_geocoder)) {
+    $vocab = ($type == 'modern') ? 'countries' : 'countries_historical';
+    if ($options = clio_search_taxonomy_options($vocab, 'field_country_id')) {
       $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
       $selectall .= ", selectionFooter: \"<a href='#' id='deselect-all-countries'>deselect all</a>\"";
-      $leaveblank = ", selectionHeader: \"(Leave blank for all countries)\"";
+      $leaveblank = ", selectionHeader: \"<span class='leave'>(Leave blank for all countries)</span>\"";
     }
     else {
       drupal_set_message(t('No countries available.'), 'error');
@@ -365,12 +384,14 @@ EOB;
     );
   }
   else {
-    // historical
-    // $form['help']['#attached']['libraries_load'][] = array('jquery.typeahead');
+    // Historical countries using the geocoding service. Show an ajaxified search box
+    // on top of an empty select box.
+    //
     // Use our own patched version of jquery.typeahead until this issue is fixed:
-    // https://jira.socialhistoryservices.org/browse/CLIOS-242
+    // TODO https://jira.socialhistoryservices.org/browse/CLIOS-242
     $form['help']['#attached']['js'] = array(drupal_get_path('module', 'clio_search') . '/js/jquery.typeahead.js');
     $form['help']['#attached']['css'] = array(drupal_get_path('module', 'clio_search') . '/css/jquery.typeahead.min.css');
+    // $form['help']['#attached']['libraries_load'][] = array('jquery.typeahead');
     $form['country'] = array(
       '#type' => 'select',
       '#title' => t('Countries'),
