@@ -7,6 +7,7 @@
           // Add multiselect to select field, create separate search box above.
           $(this).multiSelect({
             selectableHeader: "<input id='geobox' type='text' class='search-input' autocomplete='off' placeholder=''>",
+            selectionHeader: "(Leave blank for all countries)",
             afterDeselect: function(values){
               console.log("Deselect value: "+values);
               $('#ms-edit-country .ms-selectable .ms-list .ms-elem-selectable').hide();

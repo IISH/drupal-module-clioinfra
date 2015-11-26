@@ -323,10 +323,12 @@ EOB;
     if ($options = clio_search_taxonomy_options('countries', 'field_country_id')) {
       $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
       $selectall .= ", selectionFooter: \"<a href='#' id='deselect-all-countries'>deselect all</a>\"";
+      $leaveblank = ", selectionHeader: \"(Leave blank for all countries)\"";
     }
     else {
       drupal_set_message(t('No countries available.'), 'error');
       $selectall = '';
+      $leaveblank = '';
     }
     $form['country'] = array(
       '#type' => 'select',
@@ -337,7 +339,7 @@ EOB;
       '#attached' => array(
         'js' => array(
           array(
-           'data' => "jQuery('#edit-country').multiSelect({{$searchbox}{$selectall}})",
+           'data' => "jQuery('#edit-country').multiSelect({{$searchbox}{$selectall}{$leaveblank}})",
            'type' => 'inline',
            'scope' => 'footer',
           ),
@@ -364,7 +366,11 @@ EOB;
   }
   else {
     // historical
-    $form['help']['#attached']['libraries_load'][] = array('jquery.typeahead');
+    // $form['help']['#attached']['libraries_load'][] = array('jquery.typeahead');
+    // Use our own patched version of jquery.typeahead until this issue is fixed:
+    // https://jira.socialhistoryservices.org/browse/CLIOS-242
+    $form['help']['#attached']['js'] = array(drupal_get_path('module', 'clio_search') . '/js/jquery.typeahead.js');
+    $form['help']['#attached']['css'] = array(drupal_get_path('module', 'clio_search') . '/css/jquery.typeahead.min.css');
     $form['country'] = array(
       '#type' => 'select',
       '#title' => t('Countries'),
@@ -406,6 +412,12 @@ EOB;
       '#value' => 1,
     );
   }
+  $disclaimer = t("Disclaimer: The data as offered via this website are in some cases constructed within our project, while in other cases they are derived from external authors/repositories. People making use of these data must consult the sources as given in the accompanying working paper.");
+  $form['disclaimer'] = array(
+    '#prefix' => '<div class="select-disclaimer">',
+    '#markup' => $disclaimer,
+    '#suffix' => '</div>',
+  );
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('OK'),
