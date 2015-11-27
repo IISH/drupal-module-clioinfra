@@ -571,11 +571,33 @@ function clio_search_get_results() {
         $query[$index] = $value;
       }
     }
-    $query = url($path, array('query' => $query));
+    
+/************ TODO 
+    // Try this instead of the code below to allow for queries that are too long for GET.
+    // Or perhaps a drupal_http_request() would be better.
+    // https://api.drupal.org/api/drupal/includes!common.inc/function/drupal_http_request/7
+    $querydata = http_build_query($query);
+    $querylength = strlen($querydata);
+    $opts = array(
+      'http' => array(
+        'method' => 'POST',
+        'header'  => "Content-Type: application/json\r\nContent-Length: $querylength\r\n",
+        'content' => $querydata,
+      )
+    );
+    $context = stream_context_create($opts);
+    // TODO Input and output validation.
+    if ($result = file_get_contents($path, FALSE, $context)) {
+      // $result = utf8_encode($result);
+      $data = drupal_json_decode($result);
+    }    
+**************/
+    
+    $url = url($path, array('query' => $query));
     $opts = array('http' => array('method' => 'GET'));
     $context = stream_context_create($opts);
     // TODO Input and output validation.
-    if ($result = file_get_contents($query, FALSE, $context)) {
+    if ($result = file_get_contents($url, FALSE, $context)) {
       // $result = utf8_encode($result);
       $data = drupal_json_decode($result);
     }
@@ -608,11 +630,11 @@ function clio_search_get_default_result() {
   }
   else {
     $query = array('latest' => 'dataset');
-    $query = url($path, array('query' => $query));
+    $url = url($path, array('query' => $query));
     $opts = array('http' => array('method' => 'GET'));
     $context = stream_context_create($opts);
     // TODO Output validation.
-    if ($result = file_get_contents($query, FALSE, $context)) {
+    if ($result = file_get_contents($url, FALSE, $context)) {
       if (!isset($_SESSION['clio'])) {
         $_SESSION['clio'] = array();
       }
@@ -832,6 +854,26 @@ function clio_search_download() {
 
   $download_url = variable_get('clio_search_download_url', '');
   if ($download_url) {
+
+/************ TODO
+    //     // Try this instead of the code below to allow for queries that are too long for GET.
+    $querydata = http_build_query($query);
+    $querylength = strlen($querydata);
+    $opts = array(
+      'http' => array(
+        'method' => 'POST',
+        'header'  => "Content-Type: application/json\r\nContent-Length: $querylength\r\n",
+        'content' => $querydata,
+      )
+    );
+    $context = stream_context_create($opts);
+    // TODO Check if zip has a sane value.
+    if ($zip = file_get_contents($download_url, FALSE, $context)) {
+      // drupal_goto($zip);
+      drupal_goto(url($download_url, array('query' => $query)));
+    }
+**************/  
+
     $opts = array('http' => array('method' => 'GET'));
     $context = stream_context_create($opts);
     // TODO Check if zip has a sane value.
