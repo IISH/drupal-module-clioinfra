@@ -1,8 +1,10 @@
 Clio Infra v4 documentation
+===========================
 
 Import:
+-------
 
-Two importers are configured using the Feeds module. Using these importers, external lists of countries and indicators are mapped to Drupal taxonomy terms.
+Three importers are configured using the Feeds module. Using these importers, external lists of countries and indicators are mapped to Drupal taxonomy terms.
 See /admin/structure/feeds:
 Under Basic settings the import is scheduled at once per day.
 Under Mapping the fields from the lists are mapped to Drupal taxonomy fields. To populate the list of sources you first have to specify them on the import page.
@@ -14,12 +16,19 @@ Per entry the importer expects a name, id, and parent_id.
 
 
 Custom module:
+--------------
 
 The custom module consists of a base module, and two submodules: clio_search and clio_analyze. In the base module the DEBUG mode can be set. In DEBUG mode queries to external API's are displayed on screen.
 
-clio_search 
+* clio_search 
 
 Creates the search page and search results page.
+
+Input fields are start and end year, indicators and countries.
+Minimum start year and maximum end year are set as constants in the base module.
+The list of indicators is created from the indicators vocabulary.
+The list of countries is either created from the (modern) countries or historical countries vocabularies, or (when configured by an administrator) an external geocoding service is used to supply country names and codes.
+
 The search page uses three javascript libraries: 
 - multiselect.js, see http://loudev.com
 This converts a select list to two adjacent boxes, to easily select and deselect multiple list items.
@@ -39,7 +48,7 @@ The url's of the external API's are configurable in the backend:
 /admin/config/clio/search
 
 
-clio_analyze
+* clio_analyze
 
 Visualizations are configured in the backend. 
 
@@ -52,6 +61,7 @@ The visualization will be displayed as an iframe, the content of which is provid
 
 
 CORS:
+-----
 
 Several javascript scripts send requests to external API's. These API's should allow Cross-Origin Resource Sharing. This can be enabled by setting a header in Apache:
 Header set Access-Control-Allow-Origin "*"

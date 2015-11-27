@@ -6,13 +6,13 @@
 function clio_search_menu() {
   $items = array();
   $items['datasets'] = array(
-    'title' => 'Datasets',
+    'title' => t('Datasets'),
     'page callback' => 'clio_search_intro',
     'access arguments' => array('search datasets'),
     'expanded' => TRUE,
   );
   $items['datasets/search'] = array(
-    'title' => 'Select',
+    'title' => t('Select'),
     'page callback'    => 'drupal_get_form',
     'page arguments'   => array('clio_search_select_form', 'modern'),
     'access arguments' => array('search datasets'),
@@ -20,13 +20,13 @@ function clio_search_menu() {
     'weight' => 13,
   );
   $items['datasets/search/modern'] = array(
-    'title' => 'Modern',
+    'title' => t('2012 boundaries'),
     'access arguments' => array('search datasets'),
     'type'             => MENU_DEFAULT_LOCAL_TASK,
     'weight' => 1,
   );
   $items['datasets/search/historical'] = array(
-    'title' => 'Historical',
+    'title' => t('historical boundaries'),
     'page callback'    => 'drupal_get_form',
     'page arguments'   => array('clio_search_select_form', 'historical'),
     'access arguments' => array('search datasets'),
@@ -34,7 +34,7 @@ function clio_search_menu() {
     'weight' => 2,
   );
   $items['datasets/searchresults'] = array(
-    'title' => 'Search results',
+    'title' => t('Search results'),
     'page callback'    => 'clio_search_show_results',
     'access arguments' => array('search datasets'),
     'type'             => MENU_CALLBACK,
@@ -46,7 +46,7 @@ function clio_search_menu() {
     'type'             => MENU_CALLBACK,
   );
   $items['admin/config/clio/search'] = array(
-    'title' => 'Search',
+    'title' => t('Search'),
     'description' => t('Configure Clio Infra search services'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('clio_search_config_form'),
@@ -230,7 +230,8 @@ function clio_search_select_form($form, &$form_state, $tab = NULL) {
     $params['country'] = array();
   }
   if ($tab) {
-    $title = t("Select (@type)", array('@type' => $type));
+    $option = $type == 'historical' ? t('historical boundaries') : t('2012 boundaries');
+    $title = t("Select (@option)", array('@option' => $option));
     drupal_set_title($title);
   }
 
@@ -276,11 +277,15 @@ EOB;
     ),
   );
 
+  $use_geocoder = variable_get('clio_search_use_geocoder', 1);
   if ($type == 'modern') {
    $help = t('Datasets converted to modern boundaries.');
   }
   else {
-   $help = t('Datasets according to historical boundaries. Start typing and suggested country names will appear.');
+   $help = t('Datasets according to historical boundaries.');
+   if ($use_geocoder) {
+     $help .= ' ' . t('Start typing and suggested country names will appear.');
+   }
   }
   $form['help'] = array(
     '#prefix' => '<div class="select-help">',
@@ -336,7 +341,6 @@ EOB;
 
   // If searching modern countries, or historical countries without the geocoding service,
   // we show a country list based on a vocabulary.
-  $use_geocoder = variable_get('clio_search_use_geocoder', 1);
   if (($type == 'modern') || (($type == 'historical') && !$use_geocoder)) {
     $vocab = ($type == 'modern') ? 'countries' : 'countries_historical';
     if ($options = clio_search_taxonomy_options($vocab, 'field_country_id')) {
@@ -378,10 +382,6 @@ EOB;
     if (isset($params['country'])) {
       $form['country']['#default_value'] = $params['country'];
     }
-    $form['type'] = array (
-      '#type' => 'hidden',
-      '#value' => 'modern',
-    );
   }
   else {
     // Historical countries using the geocoding service. Show an ajaxified search box
@@ -422,11 +422,11 @@ EOB;
       $form['country']['#default_value'] = $params['country'];
     }
 */                      
-    $form['type'] = array (
-      '#type' => 'hidden',
-      '#value' => 'historical',
-    );
   }
+  $form['type'] = array (
+    '#type' => 'hidden',
+    '#value' => $type,
+  );
   if ($tab) {
     $form['tab'] = array (
       '#type' => 'value',
@@ -502,13 +502,17 @@ function clio_search_type_form($form, &$form_state) {
   }
   $form['modern'] = array(
     '#type' => 'submit',
-    '#value' => t('modern'),
+    '#name' => 'modern',
+    '#value' => t('2012 boundaries'),
+    '#submit' => array('clio_search_type_modern_submit', 'clio_search_type_form_submit'),
     '#prefix' => $type == 'modern' ? '<span class="active">' : '<span>',
     '#suffix' => '</span>',
   );
   $form['historical'] = array(
     '#type' => 'submit',
-    '#value' => t('historical'),
+    '#name' => 'historical',
+    '#value' => t('historical boundaries'),
+    '#submit' => array('clio_search_type_historical_submit', 'clio_search_type_form_submit'),
     '#prefix' => $type == 'historical' ? '<span class="active">' : '<span>',
     '#suffix' => '</span>',
   );
@@ -516,16 +520,13 @@ function clio_search_type_form($form, &$form_state) {
 }
 
 
-/**
- * Implements hook_form_validate().
- */
-function clio_search_type_form_validate($form, &$form_state) {
-  if ($form_state['values']['op'] == t('historical')) {
-    $form_state['values']['op'] = 'historical';
-  }
-  else{
-    $form_state['values']['op'] = 'modern';
-  }
+function clio_search_type_modern_submit($form, &$form_state) {
+  $_SESSION['clio']['type'] = array('modern');
+}
+
+
+function clio_search_type_historical_submit($form, &$form_state) {
+  $_SESSION['clio']['type'] = array('historical');
 }
 
 
@@ -533,7 +534,6 @@ function clio_search_type_form_validate($form, &$form_state) {
  * Implements hook_form_submit().
  */
 function clio_search_type_form_submit($form, &$form_state) {
-  $_SESSION['clio']['type'] = array($form_state['values']['op']);
   // Reset selected countries.
   $_SESSION['clio']['country'] = array();
   if ($datasets = clio_search_get_results()) {
