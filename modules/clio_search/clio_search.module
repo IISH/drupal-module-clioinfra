@@ -1,7 +1,7 @@
 <?php
 
 // HTTP method to use for search and download API: POST or GET.
-define('CLIO_SEARCH_METHOD', 'POST');
+define('CLIO_SEARCH_METHOD', 'GET');
 
 /**
  * Implements hook_menu().
