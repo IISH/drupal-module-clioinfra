@@ -842,6 +842,16 @@ function clio_search_download() {
     }
   }
   $query['pid'] = $datasetid;
+  // vty fix to enable historical names
+  if (empty($tab) && isset($params['type'])) {
+    $type = $params['type'][0];
+  }
+  else {
+    // Validation.
+    $type = ($tab == 'historical') ? 'historical' : 'modern';
+  }
+  $query['type[0]'] = $type;
+
 
   $path = variable_get('clio_search_download_url', '');
   if ($path) {
