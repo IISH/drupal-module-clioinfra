@@ -1,0 +1,69 @@
+Clio Infra v4 documentation
+===========================
+
+Import:
+-------
+
+Three importers are configured using the Feeds module. Using these importers, external lists of countries and indicators are mapped to Drupal taxonomy terms.
+See /admin/structure/feeds:
+Under Basic settings the import is scheduled at once per day.
+Under Mapping the fields from the lists are mapped to Drupal taxonomy fields. To populate the list of sources you first have to specify them on the import page.
+See /import:
+Here the url of the external list is set. The importer expects json. NAME is the name in the source, VALUE is the name as will be available in the list of sources under /admin/structure/feeds.
+On the import page the import can be run manually as well.
+Updates will be overwritten. Entries that are deleted from the external list will not be deleted in Drupal.
+Per entry the importer expects a name, id, and parent_id.
+
+
+Custom module:
+--------------
+
+The custom module consists of a base module, and two submodules: clio_search and clio_analyze. In the base module the DEBUG mode can be set. In DEBUG mode queries to external API's are displayed on screen.
+
+* clio_search 
+
+Creates the search page and search results page.
+
+Input fields are start and end year, indicators and countries.
+Minimum start year and maximum end year are set as constants in the base module.
+The list of indicators is created from the indicators vocabulary.
+The list of countries is either created from the (modern) countries or historical countries vocabularies, or (when configured by an administrator) an external geocoding service is used to supply country names and codes.
+
+The search page uses three javascript libraries: 
+- multiselect.js, see http://loudev.com
+This converts a select list to two adjacent boxes, to easily select and deselect multiple list items.
+- quicksearch, see https://github.com/riklomas/quicksearch
+Adds a search box to search in the list.
+- jquery.typeahead, see www.runningcoder.org/jquerytypeahead/
+Used on the historical search page to search the external geocoder API. The suggested list items are overlayed on top of the multiselect box. 
+The query parameters for the geocoder API are set inside the file clio-search-historical.js. A fixed month and day are added to the start and end year values chosen by the user. This month and day can be set at /admin/config/clio/search.
+
+Search results:
+A request is sent to an external API.
+
+Download:
+A request is sent to an external API, the response of which contains a url to a zip file. This url is sent back to the browser.
+
+The url's of the external API's are configurable in the backend:
+/admin/config/clio/search
+
+
+* clio_analyze
+
+Visualizations are configured in the backend. 
+
+/admin/config/clio/analyze
+
+By default three visualizations are provided: Maps, Graphs and Stats. The order in the list is the order of the tabs in the frontend. The first visualization is the default.
+New visualizations can be added, but existing ones cannot be removed, only disabled. Disabling a visualization will remove the tab from the frontend.
+The urls and parameters of the external API's are configurable. The height of the visualization iframe can also be set.
+The visualization will be displayed as an iframe, the content of which is provided by the specified external API.
+
+
+CORS:
+-----
+
+Several javascript scripts send requests to external API's. These API's should allow Cross-Origin Resource Sharing. This can be enabled by setting a header in Apache:
+Header set Access-Control-Allow-Origin "*"
+See http://enable-cors.org/server_apache.html
+

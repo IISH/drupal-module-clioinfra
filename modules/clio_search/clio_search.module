@@ -1,0 +1,980 @@
+<?php
+
+// HTTP method to use for search and download API: POST or GET.
+define('CLIO_SEARCH_METHOD', 'GET');
+
+/**
+ * Implements hook_menu().
+ */
+function clio_search_menu() {
+  $items = array();
+  $items['datasets'] = array(
+    'title' => t('Datasets'),
+    'page callback' => 'clio_search_intro',
+    'access arguments' => array('search datasets'),
+    'expanded' => TRUE,
+  );
+  $items['datasets/search'] = array(
+    'title' => t('Select'),
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('clio_search_select_form', 'modern'),
+    'access arguments' => array('search datasets'),
+    'type'             => MENU_CALLBACK,
+    'weight' => 13,
+  );
+  $items['datasets/search/modern'] = array(
+    'title' => t('2012 boundaries'),
+    'access arguments' => array('search datasets'),
+    'type'             => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 1,
+  );
+  $items['datasets/search/historical'] = array(
+    'title' => t('historical boundaries'),
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('clio_search_select_form', 'historical'),
+    'access arguments' => array('search datasets'),
+    'type'             => MENU_LOCAL_TASK,
+    'weight' => 2,
+  );
+  $items['datasets/searchresults'] = array(
+    'title' => t('Search results'),
+    'page callback'    => 'clio_search_show_results',
+    'access arguments' => array('search datasets'),
+    'type'             => MENU_CALLBACK,
+  );
+  $items['datasets/download'] = array(
+    'page callback'    => 'clio_search_download',
+    'page arguments'   => array(2),
+    'access arguments' => array('download datasets'),
+    'type'             => MENU_CALLBACK,
+  );
+  $items['admin/config/clio/search'] = array(
+    'title' => t('Search'),
+    'description' => t('Configure Clio Infra search services'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('clio_search_config_form'),
+    'access arguments' => array('administer clioinfra'),
+  );
+  return $items;
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+function clio_search_permission() {
+  return array(
+    'search datasets' => array(
+      'title' => t('Search and filter datasets'),
+    ),
+    'download datasets' => array(
+      'title' => t('Download search results as zip file'),
+    ),
+  );
+}
+
+
+/**
+ * No intro, we go straight to search.
+ */
+function clio_search_intro() {
+  drupal_goto('datasets/search');
+}
+
+
+/**
+ * Implements hook_libraries_info().
+ */
+function clio_search_libraries_info() {
+  $libraries['multiselect.js'] = array(
+    'name' => 'multiselect.js',
+    'vendor url' => 'http://loudev.com',
+    'download url' => 'http://loudev.com',
+    'version arguments' => array(
+      'file' => 'bower.json',
+       // 0.x: "version": "0.9.10"
+      'pattern' => '@version": "([0-9\.]+)@',
+    ),
+    'files' => array(
+      'js' => array(
+        'js/jquery.multi-select.js',
+      ),
+      'css' => array(
+        'css/multi-select.css',
+      ),
+    ),
+  );
+  $libraries['quicksearch'] = array(
+    'name' => 'quicksearch',
+    'vendor url' => 'https://github.com/riklomas/quicksearch',
+    'download url' => 'https://github.com/riklomas/quicksearch',
+    'version' => '0.0',
+    'files' => array(
+      'js' => array(
+        'jquery.quicksearch.js',
+      ),
+    ),
+  );
+  $libraries['jquery.typeahead'] = array(
+    'name' => 'jquery.typeahead',
+    'vendor url' => 'http://www.runningcoder.org/jquerytypeahead',
+    'download url' => 'http://www.runningcoder.org/jquerytypeahead',
+    'version arguments' => array(
+      'file' => 'bower.json',
+      'pattern' => '@version": "([0-9\.]+)@',
+    ),
+    'files' => array(
+      'js' => array(
+        'src/jquery.typeahead.js',
+      ),
+      'css' => array(
+        'dist/jquery.typeahead.min.css',
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+
+/**
+ * Configuration form for API url's.
+ */
+// TODO Add parameters. Add test buttons for all API's to check connections.
+function clio_search_config_form($form, &$form_state) {
+  $form = array();
+  $form['clio_search_search_url'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('Search API'),
+    '#description' => t('The url of the API providing the search results. E.g. http://api.example.com/search'),
+    '#default_value' => variable_get('clio_search_search_url', ''),
+    '#element_validate' => array('clio_validate_api'),
+  );
+  $form['clio_search_search_default_url'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('Default dataset API'),
+    '#description' => t('The url of the API providing the default dataset.'),
+    '#default_value' => variable_get('clio_search_search_default_url', ''),
+    '#element_validate' => array('clio_validate_api'),
+  );
+  $form['clio_search_download_url'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('Download API'),
+    '#description' => t('The url of the API providing the download files.'),
+    '#default_value' => variable_get('clio_search_download_url', ''),
+    '#element_validate' => array('clio_validate_api'),
+  );
+  $form['clio_search_use_geocoder'] = array(
+    '#type'  => 'checkbox',
+    '#title' => t('Use Geocoder'),
+    '#description' => t('Use an external geocoding api to provide historical country names and codes. If enabled specify the url below. If disabled a vocabulary with machine name <em>countries_historical</em> wil be used.'),
+    '#default_value' => variable_get('clio_search_use_geocoder', 1),
+  );
+  $form['clio_search_geocode'] = array(
+    '#type'  => 'fieldset',
+    '#title' => t('Geocoder'),
+    '#states' => array(
+      'invisible' => array(
+       ':input[name="clio_search_use_geocoder"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+  $form['clio_search_geocode']['clio_search_geocode_url'] = array(
+    '#type'  => 'textfield',
+    '#title' => t('Geocode API'),
+    '#description' => t('The url of the API providing the geocodes and names of historical countries.'),
+    '#default_value' => variable_get('clio_search_geocode_url', ''),
+    '#element_validate' => array('clio_validate_api'),
+  );
+  $form['clio_search_geocode']['clio_search_composite_id'] = array(
+    '#type'  => 'radios',
+    '#title' => t('Geocode ID'),
+    '#options' => array(0 => t('Numeric'), 1 => t('Composite')),
+    '#description' => t('Select how the ID\'s from the Geocode API are formatted. Composite ID\'s are formatted like "geacron/12345".'),
+    '#default_value' => variable_get('clio_search_composite_id', 0),
+  );
+  $form['clio_search_geocode']['clio_search_month'] = array(
+    '#type'  => 'select',
+    '#title' => t('Month'),
+    '#options' => drupal_map_assoc(array('01','02','03','04','05','06','07','08','09', '10', '11', '12')),
+    '#description' => t('The fixed month that will be used to query the geocode server.'),
+    '#default_value' => variable_get('clio_search_month', '01'),
+  );
+  $form['clio_search_geocode']['clio_search_day'] = array(
+    '#type'  => 'select',
+    '#title' => t('Day'),
+    '#options' => drupal_map_assoc(array_merge(array('01','02','03','04','05','06','07','08','09'),range(10, 31))),
+    '#description' => t('The fixed day that will be used to query the geocode server.'),
+    '#default_value' => variable_get('clio_search_day', '01'),
+  );
+  return system_settings_form($form);
+}
+
+
+/*
+ * Show a selection form with years, countries and indicators.
+ * Either use modern or historical boundaries.
+ * Historical country names and codes are requested live from an external API.
+ * The default selection is stored in the session.
+ *
+ * @param $tab
+ *   Will be set to 'modern' or 'historical' when called from the selection page.
+ */
+function clio_search_select_form($form, &$form_state, $tab = NULL) {
+  $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+  if (empty($tab) && isset($params['type'])) {
+    $type = $params['type'][0];
+  }
+  else {
+    // Validation.
+    $type = ($tab == 'historical') ? 'historical' : 'modern';
+  }
+  if ($tab && isset($params['type']) && ($tab != $params['type'][0])) {
+    // We switched type, so don't show country selection as the codes may overlap.
+    $params['country'] = array();
+  }
+  if ($tab) {
+    $option = $type == 'historical' ? t('historical boundaries') : t('2012 boundaries');
+    $title = t("Select (@option)", array('@option' => $option));
+    drupal_set_title($title);
+  }
+
+  $searchbox = <<<EOB
+selectableHeader: "<input type='text' class='search-input' autocomplete='off' placeholder=''>",
+afterInit: function(ms){
+  var that = this,
+      \$selectableSearch = that.\$selectableUl.prev(),
+      selectableSearchString = '#'+that.\$container.attr('id')+' .ms-elem-selectable:not(.ms-selected)';
+
+  that.qs1 = \$selectableSearch.quicksearch(selectableSearchString)
+  .on('keydown', function(e){
+    if (e.which === 40){
+      that.\$selectableUl.focus();
+      return false;
+    }
+  });
+},
+afterSelect: function(){
+  this.qs1.cache();
+},
+afterDeselect: function(){
+  this.qs1.cache();
+}
+EOB;
+
+  $block_submit = <<<EOB
+jQuery('#clio-search-select-form').on('keyup keypress', function(e) {
+  var code = e.keyCode || e.which;
+  if (code == 13) { 
+    e.preventDefault();
+    return false;
+  }
+});
+EOB;
+
+  // Only submit form by clicking submit, to prevent accidental queries.
+  $form['#attached']['js'] = array(
+    array(
+     'data' => $block_submit,
+     'type' => 'inline',
+     'scope' => 'footer',
+    ),
+  );
+
+  $use_geocoder = variable_get('clio_search_use_geocoder', 1);
+  if ($type == 'modern') {
+   $help = t('Datasets converted to modern boundaries.');
+  }
+  else {
+   $help = t('Datasets according to historical boundaries.');
+   if ($use_geocoder) {
+     $help .= ' ' . t('Start typing and suggested country names will appear.');
+   }
+  }
+  $form['help'] = array(
+    '#prefix' => '<div class="select-help">',
+    '#markup' => $help,
+    '#suffix' => '</div>',
+  );
+
+  // Attach libraries to the first element, so they get loaded first.
+  $form['help']['#attached']['libraries_load'][] = array('multiselect.js');
+  $form['help']['#attached']['libraries_load'][] = array('quicksearch');
+
+  $form['year'] = array (
+    '#prefix' => '<div class="time-period">',
+    '#tree' => TRUE,
+    '#title' => t('Time period'),
+    '#suffix' => '</div>',
+  );
+  $form['year']['min'] = array (
+    '#type' => 'textfield',
+    '#title' => t('from'),
+    '#size' => 4,
+    '#default_value' => isset($params['year']['min']) ? $params['year']['min'] : CLIO_MIN_YEAR,
+  );
+  $form['year']['max'] = array (
+    '#type' => 'textfield',
+    '#title' => t('to'),
+    '#size' => 4,
+    '#default_value' => isset($params['year']['max']) ? $params['year']['max'] : CLIO_MAX_YEAR,
+  );
+
+  if (!($options = clio_search_taxonomy_options('indicators', 'field_indicator_id'))) {
+    drupal_set_message(t('No indicators available.'), 'error');
+  }
+  $form['indicator'] = array(
+    '#type' => 'select',
+    '#title' => t('Indicators'),
+    '#options' => $options,
+    '#multiple' => TRUE,
+    '#size' => 14,
+    '#attached' => array(
+      'js' => array(
+        array(
+         'data' => "jQuery('#edit-indicator').multiSelect({{$searchbox}})",
+         'type' => 'inline',
+         'scope' => 'footer',
+        ),
+      ),
+    ),
+  );
+  if (isset($params['indicator'])) {
+    $form['indicator']['#default_value'] = $params['indicator'];
+  }
+
+  // If searching modern countries, or historical countries without the geocoding service,
+  // we show a country list based on a vocabulary.
+  if (($type == 'modern') || (($type == 'historical') && !$use_geocoder)) {
+    $vocab = ($type == 'modern') ? 'countries' : 'countries_historical';
+    if ($options = clio_search_taxonomy_options($vocab, 'field_country_id')) {
+      $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
+      $selectall .= ", selectionFooter: \"<a href='#' id='deselect-all-countries'>deselect all</a>\"";
+      $leaveblank = ", selectionHeader: \"<span class='leave'>(Leave blank for all countries)</span>\"";
+    }
+    else {
+      drupal_set_message(t('No countries available.'), 'error');
+      $selectall = '';
+      $leaveblank = '';
+    }
+    $form['country'] = array(
+      '#type' => 'select',
+      '#title' => t('Countries'),
+      '#options' => $options,
+      '#multiple' => TRUE,
+      '#size' => 14,
+      '#attached' => array(
+        'js' => array(
+          array(
+           'data' => "jQuery('#edit-country').multiSelect({{$searchbox}{$selectall}{$leaveblank}})",
+           'type' => 'inline',
+           'scope' => 'footer',
+          ),
+          array(
+           'data' => "jQuery('#select-all-countries').click(function(){jQuery('#edit-country').multiSelect('select_all'); return false;})",
+           'type' => 'inline',
+           'scope' => 'footer',
+          ),
+          array(
+           'data' => "jQuery('#deselect-all-countries').click(function(){jQuery('#edit-country').multiSelect('deselect_all'); return false;})",
+           'type' => 'inline',
+           'scope' => 'footer',
+          ),
+        ),
+      ),
+    );
+    if (isset($params['country'])) {
+      $form['country']['#default_value'] = $params['country'];
+    }
+  }
+  else {
+    // Historical countries using the geocoding service. Show an ajaxified search box
+    // on top of an empty select box.
+    //
+    // Use our own patched version of jquery.typeahead until this issue is fixed:
+    // TODO https://jira.socialhistoryservices.org/browse/CLIOS-242
+    $form['help']['#attached']['js'] = array(drupal_get_path('module', 'clio_search') . '/js/jquery.typeahead.js');
+    $form['help']['#attached']['css'] = array(drupal_get_path('module', 'clio_search') . '/css/jquery.typeahead.min.css');
+    // $form['help']['#attached']['libraries_load'][] = array('jquery.typeahead');
+    $form['country'] = array(
+      '#type' => 'select',
+      '#title' => t('Countries'),
+      '#options' => array(),
+      '#multiple' => TRUE,
+      '#size' => 14,
+      // The options array is empty, so any chosen country code will fail to validate.
+      // Therefore we circumvent the built in form validation for this element.
+      '#validated' => TRUE,
+      '#prefix' => '<div class="typeahead-container"><div class="typeahead-field">',
+      '#suffix' => '</div></div>', 
+      '#attached' => array(      
+        'js' => array(drupal_get_path('module', 'clio_search') . '/js/clio-search-historical.js'),
+        'css' => array(drupal_get_path('module', 'clio_search') . '/css/clio-search.css'),
+      ),
+    );
+    $form['country']['#attached']['js'][] = array(
+      'type' => 'setting',
+      'data' => array('clioSearch' => array(
+        'geocodeapi' => variable_get('clio_search_geocode_url', ''),
+        'compositeId' => variable_get('clio_search_composite_id', 0),
+        'month' => variable_get('clio_search_month', '01'),
+        'day' => variable_get('clio_search_day', '01'),
+      )),
+    );
+/*
+    if (isset($params['country'])) {
+      $form['country']['#default_value'] = $params['country'];
+    }
+*/                      
+  }
+  $form['type'] = array (
+    '#type' => 'hidden',
+    '#value' => $type,
+  );
+  if ($tab) {
+    $form['tab'] = array (
+      '#type' => 'value',
+      '#value' => 1,
+    );
+  }
+  $disclaimer = t("Disclaimer: The data as offered via this website are in some cases constructed within our project, while in other cases they are derived from external authors/repositories. People making use of these data must consult the sources as given in the accompanying working paper.");
+  $form['disclaimer'] = array(
+    '#prefix' => '<div class="select-disclaimer">',
+    '#markup' => $disclaimer,
+    '#suffix' => '</div>',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('OK'),
+  );
+  return $form;  
+}
+
+
+/**
+ * Implements hook_form_validate().
+ * Remove all non numerical values. Set to empty array if not set.
+ */
+function clio_search_select_form_validate($form, &$form_state) {
+  $form_state['values']['type'] = isset($form_state['values']['type']) && in_array($form_state['values']['type'], array('modern', 'historical')) ? array($form_state['values']['type']) : array();
+  $form_state['values']['year'] = isset($form_state['values']['year']) ? array_filter($form_state['values']['year'], 'is_numeric') : array();
+  $form_state['values']['country'] = isset($form_state['values']['country']) ? array_filter($form_state['values']['country'], 'is_numeric') : array();
+  $form_state['values']['indicator'] = isset($form_state['values']['indicator']) ? array_filter($form_state['values']['indicator'], 'is_numeric') : array();
+}
+
+
+/**
+ * Implements hook_form_submit().
+ */
+function clio_search_select_form_submit($form, &$form_state) {
+  // Replace by new selection.
+  $_SESSION['clio'] = array();
+  $_SESSION['clio']['type'] = $form_state['values']['type'];
+  $_SESSION['clio']['year'] = $form_state['values']['year'];
+  $_SESSION['clio']['country'] = $form_state['values']['country'];
+  $_SESSION['clio']['indicator'] = $form_state['values']['indicator'];
+  if (isset($form_state['values']['tab'])) {
+    drupal_goto('datasets/searchresults');
+  }
+  else {
+    if ($datasets = clio_search_get_results()) {
+      // Select first result, which is always all datasets (Panel[..]).
+      $_SESSION['clio']['datasetid'] = $datasets[0]['datasetid'];
+      $_SESSION['clio']['startyear'] = $datasets[0]['startyear'];
+      $_SESSION['clio']['endyear'] = $datasets[0]['endyear'];
+    }
+    else {
+      unset($_SESSION['clio']['datasetid']);
+      unset($_SESSION['clio']['startyear']);
+      unset($_SESSION['clio']['endyear']);
+      drupal_set_message('Your selection yielded no results.');
+    }
+  }
+}
+
+
+/*
+ * A standalone form to switch between modern and historical boundaries.
+ */
+function clio_search_type_form($form, &$form_state) {
+  $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+  if (isset($params['type'])) {
+    $type = $params['type'][0];
+  }
+  else {
+    $type = 'modern';
+  }
+  $form['modern'] = array(
+    '#type' => 'submit',
+    '#name' => 'modern',
+    '#value' => t('2012 boundaries'),
+    '#submit' => array('clio_search_type_modern_submit', 'clio_search_type_form_submit'),
+    '#prefix' => $type == 'modern' ? '<span class="active">' : '<span>',
+    '#suffix' => '</span>',
+  );
+  $form['historical'] = array(
+    '#type' => 'submit',
+    '#name' => 'historical',
+    '#value' => t('historical boundaries'),
+    '#submit' => array('clio_search_type_historical_submit', 'clio_search_type_form_submit'),
+    '#prefix' => $type == 'historical' ? '<span class="active">' : '<span>',
+    '#suffix' => '</span>',
+  );
+  return $form;  
+}
+
+
+function clio_search_type_modern_submit($form, &$form_state) {
+  $_SESSION['clio']['type'] = array('modern');
+}
+
+
+function clio_search_type_historical_submit($form, &$form_state) {
+  $_SESSION['clio']['type'] = array('historical');
+}
+
+
+/**
+ * Implements hook_form_submit().
+ */
+function clio_search_type_form_submit($form, &$form_state) {
+  // Reset selected countries.
+  $_SESSION['clio']['country'] = array();
+  if ($datasets = clio_search_get_results()) {
+    // Select first result, which is always all datasets (Panel[..]).
+    $_SESSION['clio']['datasetid'] = $datasets[0]['datasetid'];
+    $_SESSION['clio']['startyear'] = $datasets[0]['startyear'];
+    $_SESSION['clio']['endyear'] = $datasets[0]['endyear'];
+  }
+  else {
+    unset($_SESSION['clio']['datasetid']);
+    unset($_SESSION['clio']['startyear']);
+    unset($_SESSION['clio']['endyear']);
+    drupal_set_message('Your selection yielded no results.');
+  }
+}
+
+
+/**
+ * Get results from search API based on session parameters.
+ */
+function clio_search_get_results() {
+  $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+  $data = array();
+  if (!($path = variable_get('clio_search_search_url', ''))) {
+    drupal_set_message("No search API configured.", 'error');
+  }
+  else {
+    $query = array();
+    foreach ($params as $key => $value) {
+      if (!empty($value)) {
+        // TODO Cleaner than this.
+        $index = ($key == 'indicator') ? 'i' : $key;
+        $index = ($index == 'country') ? 'c' : $index;
+        $index = ($index == 'year') ? 'y' : $index;
+        $query[$index] = $value;
+      }
+    }
+    
+    if (CLIO_SEARCH_METHOD == 'GET') {
+      $result = drupal_http_request(url($path, array('query' => $query)));
+    }
+    else {
+      $opts = array(
+        'method' => 'POST',
+        'data' => http_build_query($query),
+        'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
+      );
+      $result = drupal_http_request($path, $opts);
+    }
+
+    // TODO Input and output validation.
+    if ($result->code == 200) {
+      // $result = utf8_encode($result);
+      $data = drupal_json_decode($result->data);
+    }
+    else {
+      drupal_set_message(t('An error occurred while searching the datasets: @message', array('@message' => $result->status_message)), 'error');
+    }
+  }
+  
+  $datasets = array();
+  foreach ($data as $key => $value) {
+    $datasets[$key] = array(
+      'datasetid' => $value['pid'],
+      'title' => $value['indicator'],
+      'topic' => $value['topic'],
+      'description' => $value['description'],
+      'startyear' => isset($value['startyear']) ? $value['startyear'] : NULL,
+      'endyear' => isset($value['endyear']) ? $value['endyear'] : NULL,
+    );
+  }
+  return $datasets;
+}
+
+
+/**
+ * This will get the id of the latest uploaded dataset.
+ */
+function clio_search_get_default_result() {
+  if (!($path = variable_get('clio_search_search_default_url', ''))) {
+    drupal_set_message("No Default search API configured.", 'error');
+  }
+  else {
+    $query = array('latest' => 'dataset');
+    $url = url($path, array('query' => $query));
+    $opts = array('http' => array('method' => 'GET'));
+    $context = stream_context_create($opts);
+    // TODO Output validation.
+    if ($result = file_get_contents($url, FALSE, $context)) {
+      if (!isset($_SESSION['clio'])) {
+        $_SESSION['clio'] = array();
+      }
+      $_SESSION['clio']['datasetid'] = $result;
+      $_SESSION['clio']['type'][0] = 'modern';
+    }
+    else {
+      drupal_set_message('An error occurred while retrieving the default dataset.', 'error');
+    }
+  }
+}
+
+
+/*
+ * Show table of available indicators/datasets based on query,
+ * with button to download all result files in zip.
+ */
+function clio_search_show_results() {
+  $datasets = clio_search_get_results();
+  
+  // TODO Display indicators that were selected but not in results as greyed out.
+
+  if (count($datasets)) {
+    // The table with results.
+//    $select = '<input type="checkbox" value="Download" name="id">';
+    $select = '';
+    $header = array($select, t('Dataset'), t('Topic'), t('Description'), '');
+    $rows = array();
+    foreach ($datasets as $key => $info) {
+      $downloadform = drupal_get_form('clio_search_download_form_' . $key, $info);
+      $buttons = drupal_render($downloadform);
+      $rows[] = array($select, $info['title'], $info['topic'],  $info['description'], $buttons);
+    }
+    $content = '<div class="searchresults">';
+    $content .= theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE));
+    $content .= '</div>';
+    
+    // The download button.
+//    $downloadform = drupal_get_form('clio_search_download_multiple_form', $params);
+//    $content .= drupal_render($downloadform);
+  }
+  else {
+    $content = "No results";
+  }
+  drupal_set_title("Search results");
+  // TODO display selection?
+  if (CLIO_DEBUG) {
+    $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+    $path = variable_get('clio_search_search_url', '');
+    $query = array();
+    foreach ($params as $key => $value) {
+      if (!empty($value)) {
+        // TODO Cleaner than this.
+        $index = ($key == 'indicator') ? 'i' : $key;
+        $index = ($index == 'country') ? 'c' : $index;
+        $index = ($index == 'year') ? 'y' : $index;
+        $query[$index] = $value;
+      }
+    }
+    $querylink = l("query", $path, array('query' => $query));
+    $content .= '<div>Debug data: ' . $querylink . '</div>';
+  }
+  return $content;
+}
+
+
+/**
+ * Implements hook_forms().
+ *
+ * Allows the download form to be repeated multiple times on a page.
+ */
+function clio_search_forms($form_id, $args) {
+  $forms = array();
+  if (substr($form_id, 0, 26) == 'clio_search_download_form_') {
+    $forms[$form_id] = array('callback' => 'clio_search_download_form');
+  }
+  return $forms;
+}
+
+
+/*
+ *  Create download/analyze buttons.
+ *
+ * @param $params
+ *   The search parameters (year, topic, indicator, country).
+ * @param $id
+ *   The dataset id.
+ */
+function clio_search_download_form($form, &$form_state, $info) {
+  $form['datasetid'] = array(
+    '#type' => 'hidden',
+    '#value' => $info['datasetid'],
+  );
+  $form['startyear'] = array(
+    '#type' => 'hidden',
+    '#value' => $info['startyear'],
+  );
+  $form['endyear'] = array(
+    '#type' => 'hidden',
+    '#value' => $info['endyear'],
+  );
+  /*
+  foreach ($params as $field => $values) {
+    $form[$field] = array(
+      '#type' => 'value',
+      '#tree' => TRUE,
+    );
+    foreach ($values as $key => $value) {
+      $form[$field][$key] = array(
+        '#type' => 'hidden', // Cannot be value as we need it in the params.
+        '#value' => $value,
+      );
+    }
+  }
+  */
+  $form['download'] = array(
+    '#type' => 'submit',
+    '#value' => t('Download'),
+    '#prefix' => '<span class="search-submit-download">',
+    '#suffix' => '</span>',
+  );
+  // if (module_exists('clio_analyze') && variable_get('clio_analyze_default', '')) {
+  if (module_exists('clio_analyze')) {
+    $form['analyze'] = array(
+      '#type' => 'submit',
+      '#value' => t('Analyze'),
+      '#prefix' => '<span class="search-submit-analyze">',
+      '#suffix' => '</span>',
+    );
+  }
+  return $form;
+}
+
+
+/**
+ * Implements hook_form_validate().
+ */
+function clio_search_download_form_validate($form, &$form_state) {
+  $form_state['values']['datasetid'] = isset($form_state['values']['datasetid']) ? $form_state['values']['datasetid'] : '';
+  $form_state['values']['startyear'] = isset($form_state['values']['startyear']) && is_numeric($form_state['values']['startyear']) ? $form_state['values']['startyear'] : '';
+  $form_state['values']['endyear'] = isset($form_state['values']['endyear']) && is_numeric($form_state['values']['endyear']) ? $form_state['values']['endyear'] : '';
+}
+
+
+/**
+ * Implements hook_form_submit().
+ */
+function clio_search_download_form_submit($form, &$form_state) {
+  if (!isset($_SESSION['clio'])) {
+    $_SESSION['clio'] = array();
+  }
+  // Replace by new selection.
+  $_SESSION['clio']['datasetid'] = $form_state['values']['datasetid'];
+  $_SESSION['clio']['startyear'] = $form_state['values']['startyear'];
+  $_SESSION['clio']['endyear'] = $form_state['values']['endyear'];
+  
+  if (($form_state['values']['op'] == t('Analyze')) && (module_exists('clio_analyze'))) {
+    drupal_goto('analyze');
+  }
+  else {
+    drupal_goto('datasets/download');
+  }
+}
+
+
+/*
+ *  Create button to download all selected datasets.
+ *
+ * @param $params
+ *   The search parameters (year, topic, indicator, country).
+ */
+function clio_search_download_multiple_form($form, &$form_state, $params) {
+  $form['#action'] = url('datasets/download/multiple');
+  foreach ($params as $field => $values) {
+    $form[$field] = array(
+      '#type' => 'value',
+      '#tree' => TRUE,
+    );
+    foreach ($values as $key => $value) {
+      $form[$field][$key] = array(
+        '#type' => 'hidden', // Cannot be value as we need it in the params.
+        '#value' => $value,
+      );
+    }
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Download selected'),
+    '#prefix' => '<div class="search-submit-multiple">',
+    '#suffix' => '</div>',
+  );
+  return $form;
+}
+
+
+/*
+ * Transfer the created zip file to the client.
+ */
+function clio_search_download() {
+  $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+  $datasetid = $params['datasetid'];
+
+  // Create querystring for Download API.
+  $query = array();
+  foreach ($params as $key => $value) {
+    if (!empty($value)) {
+      // TODO Cleaner than this.
+      if ($key == 'year') {
+        $query['y'] = $value;
+      }
+      else if ($key == 'country') {
+        $query['c'] = $value;
+      }
+    }
+  }
+  $query['pid'] = $datasetid;
+  // vty fix to enable historical names
+  if (empty($tab) && isset($params['type'])) {
+    $type = $params['type'][0];
+  }
+  else {
+    // Validation.
+    $type = ($tab == 'historical') ? 'historical' : 'modern';
+  }
+  $query['type[0]'] = $type;
+
+
+  $path = variable_get('clio_search_download_url', '');
+  if ($path) {
+    if (CLIO_SEARCH_METHOD == 'GET') {
+      $result = drupal_http_request(url($path, array('query' => $query)));
+    }
+    else {
+      $opts = array(
+        'method' => 'POST',
+        'data' => http_build_query($query),
+        'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
+      );
+      $result = drupal_http_request($path, $opts);
+    }
+
+    // TODO Input and output validation.
+    if ($result->code == 200) {
+      // drupal_goto($result->data);
+      // This no longer returns a url to a zip file, but the zip file itself instead.
+      // I'm afraid this will fail with long country lists.
+      // Should we just pipe the data to the client?
+      drupal_goto(url($path, array('query' => $query)));
+    }
+    else {
+      drupal_set_message(t('An error occurred while creating the download file: @message', array('@message' => $result->status_message)), 'error');
+      drupal_goto('datasets');
+    }
+  }
+}
+
+
+/*
+ * Get only the leaves of a term tree.
+ *
+ * @param $machine_name
+ *   A vocabulary machine name.
+ * @param $parent
+ *   The parent tid to start from.
+ *
+ * @return
+ *   An array of term names keyed by tid, sorted by name.
+ */
+function clio_search_taxonomy_get_leaves($machine_name, $parent = 0) {
+  $v = taxonomy_vocabulary_machine_name_load($machine_name);
+  $terms = taxonomy_get_tree($v->vid, $parent);
+  foreach ($terms as $term) {
+    if (!(taxonomy_get_children($term->tid, $v->vid))) {
+      $options[$term->tid] = $term->name;
+    }
+  }
+  asort($options);
+  return $options;
+}
+
+
+/**
+ * Create an option list with indentation to show hierarchy.
+ */
+function clio_search_taxonomy_options($machine_name, $field_name) {
+  $options = array();
+  $vocabulary = taxonomy_vocabulary_machine_name_load($machine_name);
+  $tree = taxonomy_get_tree($vocabulary->vid);
+  foreach ($tree as $item) {
+    $term = taxonomy_term_load($item->tid);
+    if ($ids = field_get_items('taxonomy_term', $term, $field_name)) {
+      $id = $ids[0]['value'];
+      $options[$id] = str_repeat('-', $item->depth) . ' ' . $item->name;
+    }
+  }
+  return $options;
+}
+
+
+/**
+ * Get vocabulary in a hierarchical array, so we can show first level as (non-selectable) optgroups.
+ */
+function clio_search_get_selectlist($name) {
+  $options = array();
+  $vocabulary = taxonomy_vocabulary_machine_name_load($name);
+  $tree = _taxonomy_get_nested_tree($vocabulary->vid);
+  foreach ($tree as $item) {
+    if (isset($item->children)) {
+      $options_children = array();
+      foreach ($item->children as $child_item) {
+        $options_children[$child_item->tid] = $child_item->name;
+      }
+      if ($options_children) {
+        // Show topic as optgroup.
+        $options[$item->name] = $options_children;
+      }
+    }
+    else {
+      $options[$item->tid] = $item->name;
+    }
+  }
+  return $options;
+}
+
+
+/**
+ * Get a vocabulary as a hierarchical array.
+ * https://api.drupal.org/comment/50023#comment-50023
+ */
+function _taxonomy_get_nested_tree($vid_or_terms, $max_depth = NULL, $parent = 0, $parents_index = array(), $depth = 0) {
+  if (!is_array($vid_or_terms)) {
+    $vid_or_terms = taxonomy_get_tree($vid_or_terms);
+  }
+  foreach ($vid_or_terms as $term) {
+    foreach ($term->parents as $term_parent) {
+      if ($term_parent == $parent) {
+        $return[$term->tid] = $term;
+      }
+      else {
+        $parents_index[$term_parent][$term->tid] = $term;
+      }
+    }
+  }
+  foreach ($return as &$term) {
+    if (isset($parents_index[$term->tid]) && (is_null($max_depth) || $depth < $max_depth)) {
+      $term->children = _taxonomy_get_nested_tree($parents_index[$term->tid], $max_depth, $term->tid, $parents_index, $depth + 1);
+    }
+  }
+  return $return;
+}
+
+

@@ -1,0 +1,340 @@
+<?php
+
+// A module to display the visualizations. The available visualizations are configurable.
+
+/**
+ * Implements hook_menu().
+ */
+function clio_analyze_menu() {
+  $items = array();
+  $items['admin/config/clio/analyze'] = array(
+    'title'            => 'Analyze',
+    'description'      => t('Configure Clio Infra visualization services'),
+    'page callback'    => 'drupal_get_form',
+    'page arguments' => array('clio_analyze_admin_overview'),
+    'access arguments' => array('administer clioinfra'),
+    'file' => 'clio_analyze.admin.inc',
+  );
+  $items['admin/config/clio/analyze/list'] = array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/config/clio/analyze/add'] = array(
+    'title' => 'Add visualization',
+    'page callback' => 'clio_analyze_admin_viz_page',
+    'access arguments' => array('administer clioinfra'),
+    'type' => MENU_LOCAL_ACTION,
+    'weight' => 1,
+    'file' => 'clio_analyze.admin.inc',
+  );
+  $items['admin/config/clio/analyze/edit/%clio_analyze_viz_all'] = array(
+    'title callback' => 'clio_analyze_admin_viz_title',
+    'title arguments' => array(5),
+    'page callback' => 'clio_analyze_admin_viz_page',
+    'page arguments' => array(5),
+    'access arguments' => array('administer clioinfra'),
+    'file' => 'clio_analyze.admin.inc',
+  );
+  $items['analyze'] = array(
+    'title' => 'Analyze',
+    'page callback' => 'clio_analyze_intro',
+    'access arguments' => array('analyze datasets'),
+    'expanded' => TRUE,
+  );
+  $visualizations = clio_analyze_visualizations();
+  $type = MENU_DEFAULT_LOCAL_TASK;
+  foreach ($visualizations as $viz) {
+    if ($viz->status) {
+      $items['analyze/' . $viz->name] = array(
+        'title'            => $viz->label, // TODO t()?
+        'page callback'    => 'clio_analyze_view',
+        'page arguments'   => array($viz->name),
+        'access arguments' => array('analyze datasets'),
+        'type'             => $type,
+        'weight'           => $viz->weight,
+      );
+      $type = MENU_LOCAL_TASK;
+    }
+  }
+  return $items;
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+function clio_analyze_permission() {
+  return array(
+    'analyze datasets' => array(
+      'title' => t('Analyze datasets'),
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function clio_analyze_theme() {
+  return array(
+    'clio_analyze_admin_overview' => array(
+      'render element' => 'form',
+      'file' => 'clio_analyze.admin.inc',
+    ),
+  );
+}
+
+
+/**
+ * Loads a visualization object from the database.
+ *
+ * @param $name
+ *   The vizualization name.
+ *
+ * @return
+ *   A fully-populated visualization object, if the requested visualization exists and
+ *   is enabled. If the visualization does not exist, or exists in the database but
+ *   has been marked as disabled, FALSE is returned.
+ */
+function clio_analyze_viz_load($name) {
+  $visualizations = clio_analyze_visualizations();
+  return isset($visualizations[$name]) ? $visualizations[$name] : FALSE;
+}
+
+
+/**
+ * Same, but including disabled visualizations.
+ */
+function clio_analyze_viz_all_load($name) {
+  $visualizations = clio_analyze_all_visualizations();
+  return isset($visualizations[$name]) ? $visualizations[$name] : FALSE;
+}
+
+
+/**
+ * Saves a visualization object to the database.
+ *
+ * @param $viz
+ *   A visualization object having the properties:
+ *   - name: A machine-readable name representing the ID of the visualization
+ *     to save. If this corresponds to an existing visualization, that visualization
+ *     will be updated; otherwise, a new visualization will be created.
+ *   - label: The title of the visualization.
+ *   - status: (optional) An integer indicating whether the visualization is
+ *     enabled (1) or not (0). Defaults to 1.
+ *   - weight: (optional) The weight of the visualization, which controls its
+ *     placement in visualization lists. If omitted, the weight is set to 0.
+ *   - api: The url of the API providing the visualization.
+ *   - height: (optional) The height of the iframe. Defaults to 500 (px).
+ *   - parameters: (optional) An associative array of parameters
+ *     to include in the query to the API.
+ *
+ * @return
+ *   SAVED_NEW or SAVED_UPDATED.
+ */
+function clio_analyze_viz_save($viz) {
+  $viz->label = trim($viz->label);
+  if (!isset($viz->status)) {
+    $viz->status = 1;
+  }
+  if (!isset($viz->weight)) {
+    $viz->weight = 0;
+  }
+  $viz->api = trim($viz->api);
+  if (!isset($viz->height)) {
+    $viz->height = 500;
+  }
+
+  // Insert or update the visualization.
+  $return = db_merge('clio_analyze_viz')
+    ->key(array('name' => $viz->name))
+    ->fields(array(
+      'name' => $viz->name,
+      'label' => $viz->label,
+      'status' => (int) $viz->status,
+      'weight' => (int) $viz->weight,
+      'api'   => $viz->api,
+      'height' => (int) $viz->height,
+      'parameters' => serialize($viz->parameters),
+    ))
+    ->execute();
+
+  return $return;
+}
+
+
+/**
+ * Determines if a visualization exists.
+ *
+ * @param $name
+ *   The ID of the visualization to check.
+ *
+ * @return
+ *   TRUE if the visualization exists, FALSE otherwise. Note that for disabled
+ *   vizualizations clio_analyze_viz_exists() will return TRUE while clio_analyze_viz_load()
+ *   will return FALSE.
+ */
+function clio_analyze_viz_exists($name) {
+  return (bool) db_query_range('SELECT 1 FROM {clio_analyze_viz} WHERE name = :name', 0, 1, array(':name' => $name))->fetchField();
+}
+
+
+/**
+ * Retrieves a list of enabled visualizations, ordered by weight.
+ *
+ * @return
+ *   An array of visualization objects, keyed by the visualization ID and ordered by
+ *   weight.
+ */
+function clio_analyze_visualizations() {
+  $visualizations = db_select('clio_analyze_viz', 'v')
+    ->addTag('translatable')
+    ->fields('v')
+    ->condition('status', 1)
+    ->orderBy('weight')
+    ->execute()
+    ->fetchAllAssoc('name');
+  foreach ($visualizations as $id => $viz) {
+    $visualizations[$id]->parameters = unserialize($viz->parameters);
+  }
+  return $visualizations;
+}
+
+
+/**
+ * Retrieves a list of all visualizations, including disabled ones, ordered by weight.
+ *
+ * @return
+ *   An array of visualization objects, keyed by the visualization ID and ordered by
+ *   weight.
+ */
+function clio_analyze_all_visualizations() {
+  $visualizations = db_select('clio_analyze_viz', 'v')
+    ->addTag('translatable')
+    ->fields('v')
+    ->orderBy('weight')
+    ->execute()
+    ->fetchAllAssoc('name');
+  foreach ($visualizations as $id => $viz) {
+    $visualizations[$id]->parameters = unserialize($viz->parameters);
+  }
+  return $visualizations;
+}
+
+
+/**
+ * A page to display if no visualization is chosen.
+ */
+function clio_analyze_intro() {
+  // TODO Cache default viz?
+  $visualizations = clio_analyze_visualizations();
+  foreach ($visualizations as $viz) {
+    if ($viz->status) {
+      drupal_goto('analyze/'. $viz->name);
+    }
+  }
+  $content = t('Intro to analyzing datasets.');
+  $output = array (
+    'intro' => array(
+      '#type' => 'markup',
+      '#markup' => $content,
+     )
+  );
+  return $output;
+}
+
+
+/*
+ * Display a visualization.
+ *
+ * @param $viz
+ *   The visualization identifier.
+ * @param $query
+ *   Array with visualization specific query parameters to send to the API.
+ */
+function clio_analyze_view($name) {
+  if (!($viz = clio_analyze_viz_load($name))) {
+    drupal_set_message(t('The visualization does not exist or is disabled.'), 'error');
+    return '';
+  }
+
+  $query = drupal_get_query_parameters();
+  if (isset($query['dataset']) && !isset($_SESSION['clio']['datasetid'])) {
+    clio_search_get_default_result();
+  }
+  $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+  $datasetid = isset($params['datasetid']) ? $params['datasetid'] : '';
+  $yearmin   = isset($params['year']) ? $params['year']['min'] : '';
+  $yearmax   = isset($params['year']) ? $params['year']['max'] : '';
+  $startyear = isset($params['startyear']) ? $params['startyear'] : '';
+  $endyear   = isset($params['endyear']) ? $params['endyear'] : '';
+  $type      = isset($params['type']) && $params['type'][0] == 'historical' ? 'on' : '';
+  $countrylist = isset($params['country']) ? implode(',', $params['country']) : '';
+
+  $api    = $viz->api ? $viz->api : '';
+  $height = $viz->height ? $viz->height : '500';
+  $parameters = $viz->parameters ? $viz->parameters : array();
+  $query = array();
+  foreach ($parameters as $key => $value) {
+    $query[$value['key']] = $value['value'];
+  }
+
+  $content = '';
+
+  // First clear all status messages, leaving errors intact.
+  drupal_get_messages('status');
+  
+  if (!($datasetid)) {
+    drupal_set_message(t('Please select a dataset.'));
+  }
+  else if (!$api) {
+    drupal_set_message(t('The visualization is not configured correctly.'), 'error');
+  }
+  else {
+    $query = array_merge($query, 
+      array(
+        'hist' => $type,
+        'handle' => $datasetid,
+        'ctrlist' => $countrylist,
+        'yearmin' => $yearmin,
+        'yearmax' => $yearmax,
+      )
+    );
+    $url = url($api, array('query' => $query));
+    $content = '<div id="external-site-container" height="100%">
+    <iframe id="external-site" src="'. $url .'" scrolling="auto" frameBorder="0" height="' . $height . '" width="100%" />
+      <h3>Your browser does not support iframes. <a href="'. $url . '" title="' . $url . '">Click here to view the page you selected</a>.</h3>
+    </iframe>
+    </div>';
+  }
+  
+  $classes = array('collapsible', 'adjust-selection');
+  if ($datasetid) {
+    // Close the selector if a dataset was selected.
+    $classes[] = 'collapsed';
+  }
+  $output = array (
+    'vizualization' => array(
+      '#type' => 'markup',
+      '#markup' => $content,
+    ),
+    'select' => array(
+      '#type' => 'fieldset', 
+      '#title' => t('Adjust selection'),
+      // #collapsible only works when called from drupal_get_form().
+      // Therefore we set the collapse function directly.
+      '#attributes' => array('class' => $classes),
+      '#attached' => array('js' => array('misc/form.js', 'misc/collapse.js')),
+      'form1' => drupal_get_form('clio_search_type_form'),
+      'form2' => drupal_get_form('clio_search_select_form'),
+    ),
+  );
+  if (CLIO_DEBUG && $content) {
+    $output['debug'] = array(
+      '#type' => 'markup',
+      '#markup' => '<div>Debug data: '. $datasetid . ' / '. l('query', $api, array('query' => $query)) . '</div>',
+    );
+  }
+  return $output;
+}
+

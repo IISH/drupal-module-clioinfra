@@ -1,0 +1,127 @@
+/*------------------------------------*\
+    CONTENTS
+\*------------------------------------*/
+/*
+LAYOUT
+INPUT, BUTTON & DROPDOWN
+*/
+
+/*------------------------------------*\
+    LAYOUT
+\*------------------------------------*/
+
+.typeahead-container {
+    position: relative;
+    float: left;
+    z-index: 498;
+    background-color: #fff;
+}
+
+.typeahead-container,
+.typeahead-container input {
+  font-family: "Questrial","Helvetica",sans-serif;
+}
+
+.typeahead-container.result,
+.typeahead-container.filter {
+  z-index: 499;
+  float: left;
+}
+
+.typeahead-result > ul {
+  margin: 0;
+  padding: 0;
+}
+.typeahead-result > ul > li {
+  list-style: none;
+}
+.typeahead-result > ul > li a {
+  color: #555;
+}
+
+.typeahead-result > ul > li.typeahead-group a {
+    background-color: #eee;
+    font-size: 14px;
+    color: #333;
+    font-variant: small-caps;
+    font-weight: bold;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.75);
+    -moz-text-shadow: 0 1px 0 rgba(0,0,0,0.75);
+    -webkit-text-shadow: 0 1px 0 rgba(0,0,0,0.75);
+}
+
+
+/*------------------------------------*\
+    INPUT, BUTTON & DROPDOWN
+\*------------------------------------*/
+
+.typeahead-container .input-group-btn {
+    z-index: 1001;
+}
+
+.typeahead-container .typeahead-result > .dropdown-menu {
+    display: block;
+    width: 100%;
+}
+
+.typeahead-container .input-group .dropdown-menu {
+    z-index: 1001;
+}
+
+.typeahead-container .input-group .form-control {
+    border-radius: 0;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+.typeahead-container .btn[type="button"] {
+    border-radius: 0;
+    margin-left: -1px;
+}
+
+#clio-search-select-form #geobox {
+  height: 15px;
+  padding: 1px;
+}
+
+.typeahead-dropdown, 
+.typeahead-list {
+    background-clip: padding-box;
+    background-color: #fff;
+    border: 1px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: 13px;
+    left: 0;
+    list-style: outside none none;
+    margin: 2px 0 0;
+    padding: 5px 0;
+    position: absolute;
+    text-align: left;
+    top: 64px; /* TODO */
+    width: 169px; /* TODO */
+    z-index: 1000;
+}
+.typeahead-dropdown > li > a, 
+.typeahead-list > li > a {
+  padding: 2px 10px;
+}
+
+.typeahead-dropdown > li.active > a,
+.typeahead-dropdown > li > a:focus,
+.typeahead-dropdown > li > a:hover,
+.typeahead-list > li.active > a,
+.typeahead-list > li > a:focus,
+.typeahead-list > li > a:hover {
+  background-color: #96bd0d;
+  color: #fff;
+}
+
+.typeahead-container * {
+  box-sizing: inherit;
+}
+
+.typeahead-dropdown > li > a, 
+.typeahead-list > li > a {
+  white-space: normal;
+}
