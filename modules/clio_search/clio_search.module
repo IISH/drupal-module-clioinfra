@@ -347,8 +347,15 @@ EOB;
   if (($type == 'modern') || (($type == 'historical') && !$use_geocoder)) {
     $vocab = ($type == 'modern') ? 'countries' : 'countries_historical';
     if ($options = clio_search_taxonomy_options($vocab, 'field_country_id')) {
-      $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
-      $selectall .= ", selectionFooter: \"<a href='#' id='deselect-all-countries'>deselect all</a>\"";
+      if ($type == 'modern')
+      {
+         $selectall = ", selectableFooter: \"<a href='#' id='select-all-countries'>select all</a>\"";
+         $selectall .= ", selectionFooter: \"<a href='#' id='deselect-all-countries'>deselect all</a>\"";
+      }
+      else
+      { 
+         $selectall = '';
+      }
       $leaveblank = ", selectionHeader: \"<span class='leave'>(Leave blank for all countries)</span>\"";
     }
     else {
