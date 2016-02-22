@@ -228,6 +228,13 @@ function clio_search_select_form($form, &$form_state, $tab = NULL) {
     // Validation.
     $type = ($tab == 'historical') ? 'historical' : 'modern';
   }
+  if (isset($params['view'])) {
+    $view = $params['view'];
+  }
+  else
+  {
+    $view = 'panel';
+  }
   if ($tab && isset($params['type']) && ($tab != $params['type'][0])) {
     // We switched type, so don't show country selection as the codes may overlap.
     $params['country'] = array();
@@ -443,7 +450,21 @@ EOB;
       '#value' => 1,
     );
   }
+  $form['view'] = array (
+    '#type' => 'hidden',
+    '#value' => $view,
+  );
   $disclaimer = t("Disclaimer: The data as offered via this website are in some cases constructed within our project, while in other cases they are derived from external authors/repositories. People making use of these data must consult the sources as given in the accompanying working paper.");
+  $message = t("
+<script>
+window.addEventListener('message', function(event) {
+window.top.document.getElementsByName('view')[0].value = String(event.data);
+});
+</script>");
+
+  $form['message'] = array(
+    '#markup' => $message,
+  );
   $form['disclaimer'] = array(
     '#prefix' => '<div class="select-disclaimer">',
     '#markup' => $disclaimer,
@@ -475,6 +496,7 @@ function clio_search_select_form_validate($form, &$form_state) {
 function clio_search_select_form_submit($form, &$form_state) {
   // Replace by new selection.
   $_SESSION['clio'] = array();
+  $_SESSION['clio']['view'] = $_POST['view'];
   $_SESSION['clio']['type'] = $form_state['values']['type'];
   $_SESSION['clio']['year'] = $form_state['values']['year'];
   $_SESSION['clio']['country'] = $form_state['values']['country'];
@@ -504,6 +526,7 @@ function clio_search_select_form_submit($form, &$form_state) {
  */
 function clio_search_type_form($form, &$form_state) {
   $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+  $view = 'panel';
   if (isset($params['type'])) {
     $type = $params['type'][0];
   }
@@ -513,6 +536,7 @@ function clio_search_type_form($form, &$form_state) {
   $form['modern'] = array(
     '#type' => 'submit',
     '#name' => 'modern',
+    '#view' => $view,
     '#value' => t('2012 boundaries'),
     '#submit' => array('clio_search_type_modern_submit', 'clio_search_type_form_submit'),
     '#prefix' => $type == 'modern' ? '<span class="active">' : '<span>',
@@ -521,6 +545,7 @@ function clio_search_type_form($form, &$form_state) {
   $form['historical'] = array(
     '#type' => 'submit',
     '#name' => 'historical',
+    '#view' => $view,
     '#value' => t('historical boundaries'),
     '#submit' => array('clio_search_type_historical_submit', 'clio_search_type_form_submit'),
     '#prefix' => $type == 'historical' ? '<span class="active">' : '<span>',
