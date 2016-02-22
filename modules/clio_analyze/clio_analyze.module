@@ -268,6 +268,7 @@ function clio_analyze_view($name) {
   $yearmax   = isset($params['year']) ? $params['year']['max'] : '';
   $startyear = isset($params['startyear']) ? $params['startyear'] : '';
   $endyear   = isset($params['endyear']) ? $params['endyear'] : '';
+  $view = isset($params['view']) ? $params['view'] : 'panel';
   $type      = isset($params['type']) && $params['type'][0] == 'historical' ? 'on' : '';
   $countrylist = isset($params['country']) ? implode(',', $params['country']) : '';
 
@@ -298,6 +299,7 @@ function clio_analyze_view($name) {
         'ctrlist' => $countrylist,
         'yearmin' => $yearmin,
         'yearmax' => $yearmax,
+	'view' => $view
       )
     );
     $url = url($api, array('query' => $query));
