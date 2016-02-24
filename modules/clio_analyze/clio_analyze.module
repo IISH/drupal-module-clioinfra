@@ -338,7 +338,7 @@ function clio_analyze_view($name) {
     ),
   );
   if ($content) {
-    $shareurl = '/' . current_path(); 
+    // vty: landing page for specific dataset
     $shareurl = l('direct link to share this visualization', current_path(), array('query' => $query));
     $output['share'] = array(
       '#type' => 'markup',
