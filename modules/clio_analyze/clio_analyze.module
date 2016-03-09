@@ -305,7 +305,8 @@ function clio_analyze_view($name) {
         'ctrlist' => $countrylist,
         'yearmin' => $yearmin,
         'yearmax' => $yearmax,
-	'view' => $view
+	'view' => $view,
+	'histo' => $type
       )
     );
     $url = url($api, array('query' => $query));
