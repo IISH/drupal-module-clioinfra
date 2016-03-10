@@ -339,7 +339,14 @@ function clio_analyze_view($name) {
     ),
   );
   if ($content) {
+    # Compile direct link to data selection without handle in uri
     $shareurl = '/' . current_path(); 
+    unset($query['handle']);
+    $query = array_merge($query,
+       array(
+        'datasetid' => $datasetid,
+	   )
+    );
     $shareurl = l('direct link to visualization', current_path(), array('query' => $query));
     $output['share'] = array(
       '#type' => 'markup',
