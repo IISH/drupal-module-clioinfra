@@ -950,7 +950,10 @@ function clio_search_taxonomy_options($machine_name, $field_name) {
     $term = taxonomy_term_load($item->tid);
     if ($ids = field_get_items('taxonomy_term', $term, $field_name)) {
       $id = $ids[0]['value'];
-      $options[$id] = str_repeat('-', $item->depth) . ' ' . $item->name;
+      if ($item->depth)
+      {
+          $options[$id] = str_repeat('-', $item->depth) . ' ' . $item->name;
+      }
     }
   }
   return $options;
