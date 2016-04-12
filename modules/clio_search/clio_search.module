@@ -2,12 +2,19 @@
 
 // HTTP method to use for search and download API: POST or GET.
 define('CLIO_SEARCH_METHOD', 'GET');
+//drupal_flush_all_caches();
 
 /**
  * Implements hook_menu().
  */
 function clio_search_menu() {
   $items = array();
+  $items['indicators'] = array(
+    'title' => t('Datasets'),
+    'page callback' => 'clio_search_intro',
+    'access arguments' => array('search datasets'),
+    'expanded' => TRUE,
+  );
   $items['datasets'] = array(
     'title' => t('Datasets'),
     'page callback' => 'clio_search_intro',
@@ -21,6 +28,20 @@ function clio_search_menu() {
     'access arguments' => array('search datasets'),
     'type'             => MENU_CALLBACK,
     'weight' => 13,
+  );
+  $items['datasets/indicators'] = array(
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('clio_select_form', 'modern'),
+    'access arguments' => array('search datasets'),
+    'type'             => MENU_LOCAL_TASK,
+    'weight' => 12,
+  );
+  $items['datasets/indicators/historical'] = array(
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('clio_select_form', 'historical'),
+    'access arguments' => array('search datasets'),
+    'type'             => MENU_LOCAL_TASK,
+    'weight' => 12,
   );
   $items['datasets/search/modern'] = array(
     'title' => t('2012 boundaries'),
@@ -209,7 +230,162 @@ function clio_search_config_form($form, &$form_state) {
   return system_settings_form($form);
 }
 
+function clio_select_form($form, &$form_state, $tab = NULL) {
+  if (empty($tab) && isset($params['type'])) {
+    $type = $params['type'][0];
+  }
+  else {
+    // Validation.
+    $type = ($tab == 'historical') ? 'historical' : 'modern';
+  }
+  if (isset($params['view'])) {
+    $view = $params['view'];
+  }
+  else
+  {
+    $view = 'panel';
+  }
+  if ($tab && isset($params['type']) && ($tab != $params['type'][0])) {
+    // We switched type, so don't show country selection as the codes may overlap.
+    $params['country'] = array();
+  }
+  if ($tab) {
+    $option = $type == 'historical' ? t('historical boundaries') : t('2012 boundaries');
+    $title = t("Select (@option)", array('@option' => $option));
+    drupal_set_title($title);
+  }
+  if ($tab)
+  {
+    $_SESSION['clio']['type'][0] = $tab;
+  }
 
+  $form['type'] = array (
+    '#type' => 'hidden',
+    '#value' => $type,
+  );
+  if ($tab) {
+    $form['tab'] = array (
+      '#type' => 'value',
+      '#value' => 1,
+    );
+  }
+
+  if ($tab == 'historical')
+  {
+      $switch = "<span><input id='edit-download' name='op' value='2012 boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators'\" size=14></span><span class='search-submit-download'><input id='edit-download' name='op' value='historical boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators/historical'\" size=16></span>";
+  }
+  else
+  {
+      $switch = "<span class='search-submit-download'><input id='edit-download' name='op' value='2012 boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators'\" size=14></span><span align=\"center\" style=\"text-align:center\"><input id='edit-download' name='op' value='historical boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators/historical'\" size=16></span>";
+  }
+
+  $form['switch'] = array(
+    '#prefix' => '<div class="select-help">',
+    '#markup' => $switch,
+    '#suffix' => '</div>',
+  );
+  if ($type == 'modern') {
+   $help = t('Datasets converted to modern boundaries.');
+  } 
+  else {
+   $help = t('Datasets according to historical boundaries.');
+  }
+  $form['help'] = array(
+    '#prefix' => '<div class="select-help">',
+    '#markup' => $help,
+    '#suffix' => '</div>',
+  );
+   $form = clio_browse_form($form, $tab);
+   
+   return $form;
+}
+
+function clio_browse_form($form, $tab = NULL) {
+   $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
+    #drupal_set_title('Indicators');
+    if (!($path = variable_get('clio_search_search_url', ''))) {
+    drupal_set_message("No search API configured.", 'error');
+  }
+    $url = $path . "/../indicators";
+    $csvData = file_get_contents($url);
+    $lines = explode(PHP_EOL, $csvData);
+
+    // TODO Input and output validation.
+    $count = 0;
+    if ($csvData) {
+	$array = array();
+	$c = 0;
+	foreach ($lines as $line) {
+	    $array[] = str_getcsv($line,",");
+	}
+	$lineid = 0;
+        foreach($array as $item) {
+            if ($item[0] and $lineid) {
+		if ($item[4] == '')
+		{
+		   $topics[$item[2]] = $item;
+		   $count = $count + 1;
+		}
+		else
+		{
+		   $topic = $item[4];
+		   $ind = $item[2];
+		   $indicators[$ind] = $item;
+		}
+	    }
+	    $lineid = $lineid + 1;
+	}
+	ksort($topics);
+    }
+    else {
+      drupal_set_message(t('An error occurred while searching the datasets: @message', array('@message' => $result->status_message)), 'error');
+    }
+
+    $id = 0;
+    $html = "<div style=\"width:50%;float:left;\"><table border=0><tr><td style=\"vertical-align:top;\">";
+    foreach($topics as $item) {
+	if ($item[2] and $item[0]) {
+	    $id = $id + 1;
+	    $download = variable_get('clio_search_download_url', '')."?pid=" . $item[5]. "&type[0]=modern";
+
+$block = "
+ <tr><td width=60% style=\"vertical-align:top\"><b>&nbsp;" . $item[2] . "</b></td><td></td></tr>\n";
+$html = $html . $block . "\n";
+
+	foreach ($indicators as $ind)
+	{
+	    $download = variable_get('clio_search_download_url', '')."?&pid=" . $ind[5]. "&type[0]=". $tab;
+	    $analyzelink = "/analyze/maps?datasetid=".$ind[5];
+	    if ($ind[4] == $item[2] and $ind[5])
+	    {
+$block = "
+ <tr><td width=60%>&nbsp;" . $ind[2] . "</td><td>
+
+<span class='search-submit-download'><input id='edit-download' name='op' value='Download' class='form-submit' onclick=\"window.location.href='" . $download . "'\" size=7></span><span class='search-submit-analyze'><input id='edit-analyze' name='op' value='Analyze' class='form-submit' onclick=\"window.location.href='" . $analyzelink . "'\" size=7></span>
+</td> </tr>
+";
+	  	$html = $html . $block;
+	    }
+	}
+	
+	if ($id == round($count / 2)  )
+	{
+	   $html = $html . "</td></tr></table></div>\n<div style=\"width:50%;float:left;\"><table border=0>\n";	   
+	}
+
+	}
+    }
+    $html= $html . "</table></div>";
+    //var_dump($data[0]['data'][0]);
+
+    $form['browse'] = array(
+    '#prefix' => '<div style="width:100%;height:100%;">',
+    '#markup' => $html,
+    '#suffix' => '</div>',
+    );
+
+    return $form;
+}
 /*
  * Show a selection form with years, countries and indicators.
  * Either use modern or historical boundaries.
@@ -351,7 +527,7 @@ EOB;
 
   // If searching modern countries, or historical countries without the geocoding service,
   // we show a country list based on a vocabulary.
-  if (($type == 'modern') || (($type == 'historical') && !$use_geocoder)) {
+  if (($type == 'modern') || (($type == 'historical'))) { # && !$use_geocoder)) {
     $vocab = ($type == 'modern') ? 'countries' : 'countries_historical';
     if ($options = clio_search_taxonomy_options($vocab, 'field_country_id')) {
       if ($type == 'modern')
@@ -950,7 +1126,10 @@ function clio_search_taxonomy_options($machine_name, $field_name) {
     $term = taxonomy_term_load($item->tid);
     if ($ids = field_get_items('taxonomy_term', $term, $field_name)) {
       $id = $ids[0]['value'];
-      $options[$id] = str_repeat('-', $item->depth) . ' ' . $item->name;
+      if ($item->depth || $machine_name == 'countries_historical') 
+      { 
+          $options[$id] = str_repeat('-', $item->depth) . ' ' . $item->name;
+      }
     }
   }
   return $options;
