@@ -264,6 +264,12 @@ function clio_analyze_view($name) {
   }
   $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
   $datasetid = isset($params['datasetid']) ? $params['datasetid'] : '';
+  // vty: landing page for specific dataset
+  if (isset($query['datasetid'])) {
+	$landingdatasetid = $query['datasetid'];
+	$datasetid = $landingdatasetid;
+	$_SESSION['clio']['datasetid'] = $landingdatasetid;
+  }
   $yearmin   = isset($params['year']) ? $params['year']['min'] : '';
   $yearmax   = isset($params['year']) ? $params['year']['max'] : '';
   $startyear = isset($params['startyear']) ? $params['startyear'] : '';
@@ -299,7 +305,8 @@ function clio_analyze_view($name) {
         'ctrlist' => $countrylist,
         'yearmin' => $yearmin,
         'yearmax' => $yearmax,
-	'view' => $view
+	'view' => $view,
+	'histo' => $type
       )
     );
     $url = url($api, array('query' => $query));
@@ -331,6 +338,22 @@ function clio_analyze_view($name) {
       'form2' => drupal_get_form('clio_search_select_form'),
     ),
   );
+  if ($content) {
+    # Compile direct link to data selection without handle in uri
+    $shareurl = '/' . current_path(); 
+    unset($query['handle']);
+    $query = array_merge($query,
+       array(
+        'datasetid' => $datasetid,
+	   )
+    );
+    $shareurl = l('direct link to visualization', current_path(), array('query' => $query));
+    $output['share'] = array(
+      '#type' => 'markup',
+      '#markup' => '<fieldset class="collapsible adjust-selection collapsed form-wrapper collapse-processed"><legend><span class="fieldset-legend">' . $shareurl . '<br /> right click to copy, share or bookmark it</span></legend></fieldset>',
+    );
+  }
+
   if (CLIO_DEBUG && $content) {
     $output['debug'] = array(
       '#type' => 'markup',
