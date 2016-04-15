@@ -256,7 +256,7 @@ function clio_select_form($form, &$form_state, $tab = NULL) {
   }
   if ($tab)
   {
-    $_SESSION['clio']['type'][0] = $tab;
+    $_SESSION['clio']['type'][0] = '';
   }
 
   $form['type'] = array (
@@ -272,11 +272,11 @@ function clio_select_form($form, &$form_state, $tab = NULL) {
 
   if ($tab == 'historical')
   {
-      $switch = "<span><input id='edit-download' name='op' value='2012 boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators'\" size=14></span><span class='search-submit-download'><input id='edit-download' name='op' value='historical boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators/historical'\" size=16></span>";
+      $switch = "<span><input id='edit-download' name='op' value='2012 boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators'\" size=\"20\" style=\"text-align:center\"></span><span class='search-submit-download'><input id='edit-download' name='op' value='historical boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators/historical'\" size=\"20\" style=\"text-align:center\"></span>";
   }
   else
   {
-      $switch = "<span class='search-submit-download'><input id='edit-download' name='op' value='2012 boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators'\" size=14></span><span align=\"center\" style=\"text-align:center\"><input id='edit-download' name='op' value='historical boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators/historical'\" size=16></span>";
+      $switch = "<span class='search-submit-download'><input id='edit-download' name='op' value='2012 boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators'\" style=\"text-align:center\" size=\"20\"></span><span align=\"center\" style=\"float:center\"><input id='edit-download' style=\"text-align:center\" name='op' value='historical boundaries' class='form-submit' onclick=\"window.location.href='/datasets/indicators/historical'\" size=\"20\"></span>";
   }
 
   $form['switch'] = array(
