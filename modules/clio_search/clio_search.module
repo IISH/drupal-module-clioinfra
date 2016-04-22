@@ -301,6 +301,7 @@ function clio_select_form($form, &$form_state, $tab = NULL) {
 }
 
 function clio_browse_form($form, $tab = NULL) {
+   $_SESSION['clio'] = '';
    $params = isset($_SESSION['clio']) ? $_SESSION['clio'] : array();
     #drupal_set_title('Indicators');
     if (!($path = variable_get('clio_search_search_url', ''))) {
